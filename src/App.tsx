@@ -282,7 +282,7 @@ function App() {
           alignItems: 'center'
         }}>
           <img 
-            src={`/src/qs/${currentMatch.labelId}.png`}
+            src={`/qs/${currentMatch.labelId}.png`}
             alt={currentMatch.labelId}
             style={{ 
               maxWidth: '100%', 
