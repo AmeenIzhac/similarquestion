@@ -47,6 +47,120 @@ const findTopMatches = (extractedText: string): Array<{ labelId: string; text: s
     .slice(0, 10);
 };
 
+// Function to generate search description using OpenAI
+const generateSearchDescription = async (questionText: string): Promise<string> => {
+  try {
+    const openaiApiKey = import.meta.env.VITE_OPENAI_API_KEY;
+    
+    if (!openaiApiKey) {
+      console.error('OpenAI API key not configured');
+      return questionText; // Fallback to original text
+    }
+
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${openaiApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-3.5-turbo',
+        messages: [
+          {
+            role: 'system',
+            content: 'You are a helpful assistant that creates short, focused descriptions for finding similar GCSE maths questions. Your response should be a brief phrase (2-5 words) that captures the core mathematical concept being tested.'
+          },
+          {
+            role: 'user',
+            content: `Create a short description to find similar GCSE maths questions that test the same concept as this question: "${questionText}". For example if the question was "
+            
+(b) In one hour the shop sells 180 scoops of ice cream.
+
+The number of scoops of each flavour is shown in the table.
+
+Flavour	Vanilla	Strawberry	Chocolate	Mint
+Number of scoops	45	75	50	10
+
+Export to Sheets
+Complete the pie chart to represent the data."
+
+You could produce the description "Find questions that test pie charts"
+
+Or if the question was:
+
+"
+
+The diagram shows three circles, each of radius 4 cm.
+
+The centres of the circles are A, B and C such that ABC is a straight line and AB = BC = 4 cm.
+
+ork out the total area of the two shaded regions.
+
+Give your answer in terms of π"
+
+You could produce the description "Find questions that test circles area"`}],
+        max_tokens: 50,
+        temperature: 0.3
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`OpenAI API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    const description = data.choices?.[0]?.message?.content?.trim();
+    
+    console.log('Generated search description:', description);
+    return description || questionText; // Fallback to original text if no response
+  } catch (error) {
+    console.error('Error generating search description:', error);
+    return questionText; // Fallback to original text
+  }
+};
+
+// Function to search Pinecone using REST API
+const searchPinecone = async (query: string, topK: number = 10) => {
+  try {
+    const pineconeApiKey = import.meta.env.VITE_PINECONE_API_KEY;
+    const indexHost = import.meta.env.VITE_PINECONE_INDEX_HOST;
+    const namespace = import.meta.env.VITE_PINECONE_NAMESPACE || 'example-namespace';
+    
+    if (!pineconeApiKey || !indexHost) {
+      console.error('Pinecone API key or index host not configured');
+      return null;
+    }
+
+    const response = await fetch(`https://${indexHost}/records/namespaces/${namespace}/search`, {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'Api-Key': pineconeApiKey,
+        'X-Pinecone-API-Version': 'unstable',
+      },
+      body: JSON.stringify({
+        query: {
+          inputs: { text: query },
+          top_k: topK
+        },
+        fields: ["category", "chunk_text"]
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`Pinecone API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    
+    return data;
+  } catch (error) {
+    console.error('Error searching Pinecone:', error);
+    return null;
+  }
+};
+
 function App() {
   const [imageUrl, setImageUrl] = useState<string>('');
   const [client, setClient] = useState<Mistral | null>(null);
@@ -54,6 +168,7 @@ function App() {
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [topMatches, setTopMatches] = useState<Array<{ labelId: string; text: string; similarity: number }>>([]);
   const [currentMatchIndex, setCurrentMatchIndex] = useState<number>(0);
+  const [useOpenAI, setUseOpenAI] = useState<boolean>(false);
 
   useEffect(() => {
     const mistralApiKey = import.meta.env.VITE_MISTRAL_API_KEY;
@@ -100,11 +215,36 @@ function App() {
       const extractedText = ocrResponse.pages?.[0]?.markdown || 'No text found';
       setOcrResult(extractedText);
       
-      // Find the top 10 matches in guy_labels
-      const matches = findTopMatches(extractedText);
-      setTopMatches(matches);
-      setCurrentMatchIndex(0); // Start with the closest match
-      console.log('Top matches:', matches);
+      // Use OpenAI description or direct text based on toggle
+      let searchQuery = extractedText;
+      console.log("useOpenAI state:", useOpenAI);
+      if (useOpenAI) {
+        console.log("Using OpenAI for description");
+        searchQuery = await generateSearchDescription(extractedText);
+        console.log("Generated search query:", searchQuery);
+      } else {
+        console.log("No OpenAI, using direct text:", searchQuery);
+      }
+      
+      // Find similar questions using Pinecone
+      const pineconeResults = await searchPinecone(searchQuery);
+      
+      if (pineconeResults && pineconeResults.result && pineconeResults.result.hits) {
+        const matches = pineconeResults.result.hits.map((hit: any) => ({
+          labelId: hit._id,
+          text: hit.fields?.chunk_text || 'No text found',
+          similarity: hit._score
+        }));
+        setTopMatches(matches);
+        setCurrentMatchIndex(0); // Start with the closest match
+      } else {
+        // Fallback to local similarity if Pinecone fails
+        console.log("Pinecone failed");
+        const matches = findTopMatches(extractedText);
+        setTopMatches(matches);
+        setCurrentMatchIndex(0);
+        console.log('Fallback to local matches:', matches);
+      }
     } catch (error) {
       console.error("Error processing OCR:", error);
       setOcrResult('Error processing image');
@@ -113,7 +253,7 @@ function App() {
     } finally {
       setIsProcessing(false);
     }
-  }, [client]);
+  }, [client, useOpenAI]);
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -217,6 +357,45 @@ function App() {
         <p style={{ fontSize: '12px', color: '#666', marginTop: '5px' }}>
           Or paste an image with Ctrl+V
         </p>
+        
+        {/* OpenAI Toggle */}
+        <div style={{ 
+          marginTop: '15px',
+          display: 'flex',
+          alignItems: 'flex-start',
+          gap: '10px',
+          padding: '8px',
+          backgroundColor: 'rgba(0, 123, 255, 0.1)',
+          borderRadius: '6px',
+          border: '1px solid rgba(0, 123, 255, 0.3)',
+          maxWidth: '200px'
+        }}>
+          <label style={{ 
+            fontSize: '14px', 
+            color: '#333',
+            fontWeight: '500',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: '8px',
+            lineHeight: '1.3'
+          }}>
+            <input
+              type="checkbox"
+              checked={useOpenAI}
+              onChange={(e) => {
+                console.log("Toggle changed to:", e.target.checked);
+                setUseOpenAI(e.target.checked);
+              }}
+              style={{ 
+                width: '16px',
+                height: '16px',
+                cursor: 'pointer'
+              }}
+            />
+            Enhanced Search
+          </label>
+        </div>
         
         {/* OCR Results */}
         {isProcessing && (
