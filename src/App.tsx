@@ -50,7 +50,7 @@ const findTopMatches = (extractedText: string): Array<{ labelId: string; text: s
 // Function to generate search description using OpenAI
 const generateSearchDescription = async (questionText: string): Promise<string> => {
   try {
-    const openaiApiKey = import.meta.env.VITE_OPENAI_API_KEY;
+    const openaiApiKey = import.meta.env.OPENAI_API_KEY;
     
     if (!openaiApiKey) {
       console.error('OpenAI API key not configured');
@@ -122,9 +122,9 @@ You could produce the description "Find questions that test circles area"`}],
 // Function to search Pinecone using REST API
 const searchPinecone = async (query: string, topK: number = 10) => {
   try {
-    const pineconeApiKey = import.meta.env.VITE_PINECONE_API_KEY;
-    const indexHost = import.meta.env.VITE_PINECONE_INDEX_HOST;
-    const namespace = import.meta.env.VITE_PINECONE_NAMESPACE || 'example-namespace';
+    const pineconeApiKey = import.meta.env.PINECONE_API_KEY;
+    const indexHost = import.meta.env.PINECONE_INDEX_HOST;
+    const namespace = import.meta.env.PINECONE_NAMESPACE || 'example-namespace';
     
     if (!pineconeApiKey || !indexHost) {
       console.error('Pinecone API key or index host not configured');
@@ -171,7 +171,7 @@ function App() {
   const [useOpenAI, setUseOpenAI] = useState<boolean>(false);
 
   useEffect(() => {
-    const mistralApiKey = import.meta.env.VITE_MISTRAL_API_KEY;
+    const mistralApiKey = import.meta.env.MISTRAL_API_KEY;
     
     if (mistralApiKey) {
       setClient(new Mistral({ apiKey: mistralApiKey }));
