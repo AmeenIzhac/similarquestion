@@ -168,7 +168,7 @@ function App() {
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [topMatches, setTopMatches] = useState<Array<{ labelId: string; text: string; similarity: number }>>([]);
   const [currentMatchIndex, setCurrentMatchIndex] = useState<number>(0);
-  const [useOpenAI, setUseOpenAI] = useState<boolean>(false);
+
 
   useEffect(() => {
     const mistralApiKey = import.meta.env.VITE_MISTRAL_API_KEY;
@@ -215,19 +215,8 @@ function App() {
       const extractedText = ocrResponse.pages?.[0]?.markdown || 'No text found';
       setOcrResult(extractedText);
       
-      // Use OpenAI description or direct text based on toggle
-      let searchQuery = extractedText;
-      console.log("useOpenAI state:", useOpenAI);
-      if (useOpenAI) {
-        console.log("Using OpenAI for description");
-        searchQuery = await generateSearchDescription(extractedText);
-        console.log("Generated search query:", searchQuery);
-      } else {
-        console.log("No OpenAI, using direct text:", searchQuery);
-      }
-      
-      // Find similar questions using Pinecone
-      const pineconeResults = await searchPinecone(searchQuery);
+      // Find similar questions using Pinecone with extracted text
+      const pineconeResults = await searchPinecone(extractedText);
       
       if (pineconeResults && pineconeResults.result && pineconeResults.result.hits) {
         const matches = pineconeResults.result.hits.map((hit: any) => ({
@@ -253,7 +242,7 @@ function App() {
     } finally {
       setIsProcessing(false);
     }
-  }, [client, useOpenAI]);
+  }, [client]);
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -358,44 +347,7 @@ function App() {
           Or paste an image with Ctrl+V
         </p>
         
-        {/* OpenAI Toggle */}
-        <div style={{ 
-          marginTop: '15px',
-          display: 'flex',
-          alignItems: 'flex-start',
-          gap: '10px',
-          padding: '8px',
-          backgroundColor: 'rgba(0, 123, 255, 0.1)',
-          borderRadius: '6px',
-          border: '1px solid rgba(0, 123, 255, 0.3)',
-          maxWidth: '200px'
-        }}>
-          <label style={{ 
-            fontSize: '14px', 
-            color: '#333',
-            fontWeight: '500',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'flex-start',
-            gap: '8px',
-            lineHeight: '1.3'
-          }}>
-            <input
-              type="checkbox"
-              checked={useOpenAI}
-              onChange={(e) => {
-                console.log("Toggle changed to:", e.target.checked);
-                setUseOpenAI(e.target.checked);
-              }}
-              style={{ 
-                width: '16px',
-                height: '16px',
-                cursor: 'pointer'
-              }}
-            />
-            Enhanced Search
-          </label>
-        </div>
+
         
         {/* OCR Results */}
         {isProcessing && (
