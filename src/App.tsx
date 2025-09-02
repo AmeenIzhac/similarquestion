@@ -168,6 +168,7 @@ function App() {
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [topMatches, setTopMatches] = useState<Array<{ labelId: string; text: string; similarity: number }>>([]);
   const [currentMatchIndex, setCurrentMatchIndex] = useState<number>(0);
+  const [searchText, setSearchText] = useState<string>('');
 
 
   useEffect(() => {
@@ -267,6 +268,9 @@ function App() {
             const url = URL.createObjectURL(file);
             setImageUrl(url);
             
+            // Clear text search when image is pasted
+            setSearchText('');
+            
             // Process the image with OCR
             processImageWithOCR(file);
           }
@@ -297,6 +301,46 @@ function App() {
 
   const currentMatch = topMatches[currentMatchIndex];
 
+  const searchByText = useCallback(async (text: string) => {
+    if (!text.trim()) return;
+    
+    setIsProcessing(true);
+    try {
+      // Try Pinecone first
+      const pineconeResults = await searchPinecone(text);
+      
+      if (pineconeResults && pineconeResults.result && pineconeResults.result.hits) {
+        const matches = pineconeResults.result.hits.map((hit: any) => ({
+          labelId: hit._id,
+          text: hit.fields?.chunk_text || 'No text found',
+          similarity: hit._score
+        }));
+        setTopMatches(matches);
+        setCurrentMatchIndex(0);
+      } else {
+        // Fallback to local similarity
+        console.log("Pinecone failed, using local search");
+        const matches = findTopMatches(text);
+        setTopMatches(matches);
+        setCurrentMatchIndex(0);
+        console.log('Local matches:', matches);
+      }
+    } catch (error) {
+      console.error("Error searching by text:", error);
+      setTopMatches([]);
+      setCurrentMatchIndex(0);
+    } finally {
+      setIsProcessing(false);
+    }
+  }, []);
+
+  const handleTextSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchText.trim()) {
+      searchByText(searchText);
+    }
+  };
+
   return (
     <div style={{ position: 'relative', minHeight: '100vh' }}>
       {/* Title at the top center */}
@@ -325,34 +369,74 @@ function App() {
         backgroundColor: 'rgba(255, 255, 255, 0.9)',
         padding: '10px',
         borderRadius: '5px',
-        border: '2px solid #333'
+        border: '2px solid #333',
+        minWidth: '220px'
       }}>
-        {imageUrl && (
-          <img 
-            src={imageUrl} 
-            alt="Uploaded" 
-            style={{ maxWidth: '200px', height: 'auto', marginBottom: '10px' }} 
+        {/* Image upload section */}
+        <div style={{ marginBottom: '15px' }}>
+          <h3 style={{ margin: '0 0 10px 0', fontSize: '14px', color: '#333' }}>Upload Image:</h3>
+          {imageUrl && (
+            <img 
+              src={imageUrl} 
+              alt="Uploaded" 
+              style={{ maxWidth: '200px', height: 'auto', marginBottom: '10px' }} 
+            />
+          )}
+          <input 
+            type="file" 
+            accept="image/*" 
+            onChange={handleFileUpload}
+            style={{
+              color: 'transparent',
+              width: '100px'
+            }}
           />
-        )}
-        <input 
-          type="file" 
-          accept="image/*" 
-          onChange={handleFileUpload}
-          style={{
-            color: 'transparent',
-            width: '100px'
-          }}
-        />
-        <p style={{ fontSize: '12px', color: '#666', marginTop: '5px' }}>
-          Or paste an image with Ctrl+V
-        </p>
-        
+          <p style={{ fontSize: '12px', color: '#666', marginTop: '5px' }}>
+            Or paste an image with Ctrl+V
+          </p>
+        </div>
 
-        
+        {/* Text search section */}
+        <div>
+          <h3 style={{ margin: '0 0 10px 0', fontSize: '14px', color: '#333' }}>Or Search by Text:</h3>
+          <form onSubmit={handleTextSearch} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <textarea
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+              placeholder="Describe the type of question... (e.g., 'hard quadratic equations', 'trigonometry')"
+              style={{
+                width: '200px',
+                height: '60px',
+                padding: '8px',
+                border: '2px solid #333',
+                borderRadius: '4px',
+                fontSize: '12px',
+                resize: 'none'
+              }}
+            />
+            <button
+              type="submit"
+              disabled={!searchText.trim() || isProcessing}
+              style={{
+                padding: '8px 12px',
+                backgroundColor: searchText.trim() && !isProcessing ? '#28a745' : '#ccc',
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: searchText.trim() && !isProcessing ? 'pointer' : 'not-allowed',
+                fontSize: '12px',
+                fontWeight: 'bold'
+              }}
+            >
+              {isProcessing ? 'Searching...' : 'Search'}
+            </button>
+          </form>
+        </div>
+
         {/* OCR Results */}
         {isProcessing && (
           <p style={{ fontSize: '12px', color: '#007bff', marginTop: '10px' }}>
-            Processing image with OCR...
+            Processing...
           </p>
         )}
 
@@ -449,7 +533,7 @@ function App() {
             color: '#007bff',
             fontWeight: 'bold'
           }}>
-            Processing image with OCR...
+            Processing...
             <br />
             <span style={{ fontSize: '14px', color: '#666', fontWeight: 'normal' }}>
               Finding similar questions...
