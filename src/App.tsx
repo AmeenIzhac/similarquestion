@@ -397,51 +397,64 @@ function App() {
       {/* Email Signup Form */}
       <div style={{ 
         position: 'absolute',
-        right: '20px',
+        top: '10px',
+        right: '10px',
         zIndex: 10,
-        backgroundColor: 'rgba(255, 255, 255, 0.95)',
+        backgroundColor: '#f8f9fa',
         padding: '10px',
-        borderRadius: '8px'
+        borderRadius: '8px',
+        border: '2px solid #333'
       }}>
         {!emailSubmitted ? (
-          <form onSubmit={handleEmailSubmit} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="Enter your email for updates"
-              style={{
-                padding: '8px 12px',
-                border: '2px solid #333',
-                borderRadius: '4px',
-                fontSize: '14px',
-                width: '280px'
-              }}
-            />
-            <button
-              type="submit"
-              style={{
-                padding: '8px 16px',
-                backgroundColor: email.trim() ? '#28a745' : '#ccc',
-                color: 'white',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: email.trim() ? 'pointer' : 'not-allowed',
-                fontSize: '14px',
-                fontWeight: 'bold'
-              }}
-              disabled={!email.trim()}
-            >
-              Submit
-            </button>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+            <p style={{ 
+              margin: 0, 
+              fontSize: '16px', 
+              color: '#007bff', 
+              fontWeight: 'bold',
+              textAlign: 'center'
+            }}>
+              Enter email for Access to the Premium Version! 🔥
+            </p>
+            <form onSubmit={handleEmailSubmit} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Enter your email for updates"
+                style={{
+                  padding: '8px 12px',
+                  border: '2px solid #333',
+                  borderRadius: '4px',
+                  fontSize: '14px',
+                  width: '280px'
+                }}
+              />
+              <button
+                type="submit"
+                style={{
+                  padding: '8px 16px',
+                  backgroundColor: email.trim() ? '#28a745' : '#ccc',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: email.trim() ? 'pointer' : 'not-allowed',
+                  fontSize: '14px',
+                  fontWeight: 'bold'
+                }}
+                disabled={!email.trim()}
+              >
+                Submit
+              </button>
+            </form>
             {emailError && (
-              <p style={{ color: 'red', fontSize: '12px', margin: 0, position: 'absolute', top: '100%', left: '50%', transform: 'translateX(-50%)' }}>
+              <p style={{ color: 'red', fontSize: '12px', margin: 0, textAlign: 'center' }}>
                 {emailError}
               </p>
             )}
-          </form>
+          </div>
         ) : (
-          <p style={{ color: '#28a745', fontSize: '14px', margin: 0, fontWeight: 'bold' }}>
+          <p style={{ color: '#28a745', fontSize: '14px', margin: 0, fontWeight: 'bold', textAlign: 'center' }}>
             Thank you for signing up! ✓
           </p>
         )}
@@ -575,10 +588,10 @@ function App() {
       {currentMatch && !isProcessing && (
         <div style={{ 
           position: 'absolute',
-          top: '50%',
+          top: '120px', // Moved down to start under email input
           left: '250px', // Start after the small image area
           right: '20px', // Leave some margin from right edge
-          transform: 'translateY(-50%)',
+          bottom: '20px', // Add bottom margin
           zIndex: 1,
           display: 'flex',
           justifyContent: 'center',
