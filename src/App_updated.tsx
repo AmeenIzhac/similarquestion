@@ -170,9 +170,7 @@ function App() {
   const [currentMatchIndex, setCurrentMatchIndex] = useState<number>(0);
   const [searchText, setSearchText] = useState<string>('');
   const [email, setEmail] = useState<string>('');
-  const [emailSubmitted, setEmailSubmitted] = useState<boolean>(false);
-  const [emailError, setEmailError] = useState<string>('');
-
+  const [emailStatus, setEmailStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
 
   useEffect(() => {
     const mistralApiKey = import.meta.env.VITE_MISTRAL_API_KEY;
@@ -181,38 +179,6 @@ function App() {
       setClient(new Mistral({ apiKey: mistralApiKey }));
     }
   }, []);
-
-  const handleEmailSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setEmailError('');
-    
-    if (!email.trim()) {
-      setEmailError('Please enter your email');
-      return;
-    }
-    
-    try {
-      const response = await fetch('https://formspree.io/f/mnnblgob', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email: email
-        })
-      });
-      
-      if (response.ok) {
-        setEmailSubmitted(true);
-        setEmail('');
-      } else {
-        setEmailError('Failed to submit email. Please try again.');
-      }
-    } catch (error) {
-      console.error('Error submitting email:', error);
-      setEmailError('Failed to submit email. Please try again.');
-    }
-  };
 
   const convertFileToBase64 = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
@@ -376,9 +342,35 @@ function App() {
     }
   };
 
+  const handleEmailSignup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email.trim()) return;
+    
+    setEmailStatus('submitting');
+    try {
+      const response = await fetch('https://getform.io/f/bkkpennb', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email: email.trim() }),
+      });
+      
+      if (response.ok) {
+        setEmailStatus('success');
+        setEmail('');
+      } else {
+        setEmailStatus('error');
+      }
+    } catch (error) {
+      console.error('Error submitting email:', error);
+      setEmailStatus('error');
+    }
+  };
+
   return (
     <div style={{ position: 'relative', minHeight: '100vh' }}>
-      {/* Title */}
+      {/* Title at the top center */}
       <h1 style={{ 
         position: 'absolute',
         top: '10px',
@@ -394,55 +386,63 @@ function App() {
         Find Similar GCSE Maths Questions
       </h1>
 
-      {/* Email Signup Form */}
+      {/* Email signup form under the title */}
       <div style={{ 
         position: 'absolute',
-        right: '20px',
+        top: '60px',
+        left: '50%',
+        transform: 'translateX(-50%)',
         zIndex: 10,
-        backgroundColor: 'rgba(255, 255, 255, 0.95)',
-        padding: '10px',
-        borderRadius: '8px'
+        backgroundColor: 'rgba(255, 255, 255, 0.9)',
+        padding: '15px',
+        borderRadius: '8px',
+        border: '2px solid #333',
+        minWidth: '300px',
+        textAlign: 'center'
       }}>
-        {!emailSubmitted ? (
-          <form onSubmit={handleEmailSubmit} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="Enter your email for updates"
-              style={{
-                padding: '8px 12px',
-                border: '2px solid #333',
-                borderRadius: '4px',
-                fontSize: '14px',
-                width: '280px'
-              }}
-            />
-            <button
-              type="submit"
-              style={{
-                padding: '8px 16px',
-                backgroundColor: email.trim() ? '#28a745' : '#ccc',
-                color: 'white',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: email.trim() ? 'pointer' : 'not-allowed',
-                fontSize: '14px',
-                fontWeight: 'bold'
-              }}
-              disabled={!email.trim()}
-            >
-              Submit
-            </button>
-            {emailError && (
-              <p style={{ color: 'red', fontSize: '12px', margin: 0, position: 'absolute', top: '100%', left: '50%', transform: 'translateX(-50%)' }}>
-                {emailError}
-              </p>
-            )}
-          </form>
-        ) : (
-          <p style={{ color: '#28a745', fontSize: '14px', margin: 0, fontWeight: 'bold' }}>
-            Thank you for signing up! ✓
+        <h3 style={{ margin: '0 0 10px 0', fontSize: '14px', color: '#333' }}>
+          Get notified of updates
+        </h3>
+        <form onSubmit={handleEmailSignup} style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="Enter your email"
+            style={{
+              flex: 1,
+              padding: '8px 12px',
+              border: '2px solid #ccc',
+              borderRadius: '4px',
+              fontSize: '12px'
+            }}
+            required
+          />
+          <button
+            type="submit"
+            disabled={!email.trim() || emailStatus === 'submitting'}
+            style={{
+              padding: '8px 16px',
+              backgroundColor: email.trim() && emailStatus !== 'submitting' ? '#007bff' : '#ccc',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: email.trim() && emailStatus !== 'submitting' ? 'pointer' : 'not-allowed',
+              fontSize: '12px',
+              fontWeight: 'bold'
+            }}
+          >
+            {emailStatus === 'submitting' ? 'Signing up...' : 'Sign Up'}
+          </button>
+        </form>
+        {emailStatus === 'success' && (
+          <p style={{ fontSize: '12px', color: '#28a745', margin: '5px 0 0 0' }}>
+            Successfully signed up!
+          </p>
+        )}
+        {emailStatus === 'error' && (
+          <p style={{ fontSize: '12px', color: '#dc3545', margin: '5px 0 0 0' }}>
+            Failed to sign up. Please try again.
           </p>
         )}
       </div>
@@ -451,7 +451,7 @@ function App() {
       <div style={{ 
         position: 'absolute', 
         margin: '5px',
-        top: '80px', // Adjusted position
+        top: '140px',
         left: '20px',
         zIndex: 10,
         backgroundColor: 'rgba(255, 255, 255, 0.9)',
