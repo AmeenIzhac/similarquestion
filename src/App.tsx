@@ -414,7 +414,7 @@ function App() {
               fontWeight: 'bold',
               textAlign: 'center'
             }}>
-              Enter email to hear when we launch the Premium Version! 🔥
+              Enter email for access to Premium Version! 🔥
             </p>
             <form onSubmit={handleEmailSubmit} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <input
