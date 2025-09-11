@@ -1,123 +1,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { Mistral } from '@mistralai/mistralai';
-import guyLabels from './guy_labels.json';
 
-// Function to calculate string similarity using Levenshtein distance
-const calculateSimilarity = (str1: string, str2: string): number => {
-  const matrix = [];
-  
-  for (let i = 0; i <= str2.length; i++) {
-    matrix[i] = [i];
-  }
-  
-  for (let j = 0; j <= str1.length; j++) {
-    matrix[0][j] = j;
-  }
-  
-  for (let i = 1; i <= str2.length; i++) {
-    for (let j = 1; j <= str1.length; j++) {
-      if (str2.charAt(i - 1) === str1.charAt(j - 1)) {
-        matrix[i][j] = matrix[i - 1][j - 1];
-      } else {
-        matrix[i][j] = Math.min(
-          matrix[i - 1][j - 1] + 1,
-          matrix[i][j - 1] + 1,
-          matrix[i - 1][j] + 1
-        );
-      }
-    }
-  }
-  
-  const maxLength = Math.max(str1.length, str2.length);
-  return maxLength === 0 ? 1 : (maxLength - matrix[str2.length][str1.length]) / maxLength;
-};
 
-// Function to find the top 10 closest matches in guy_labels
-const findTopMatches = (extractedText: string): Array<{ labelId: string; text: string; similarity: number }> => {
-  const matches: Array<{ labelId: string; text: string; similarity: number }> = [];
-  
-  Object.entries(guyLabels).forEach(([labelId, text]) => {
-    const similarity = calculateSimilarity(extractedText.toLowerCase(), text.toLowerCase());
-    matches.push({ labelId, text, similarity });
-  });
-  
-  // Sort by similarity (highest first) and take top 10
-  return matches
-    .sort((a, b) => b.similarity - a.similarity)
-    .slice(0, 10);
-};
-
-// Function to generate search description using OpenAI
-const generateSearchDescription = async (questionText: string): Promise<string> => {
-  try {
-    const openaiApiKey = import.meta.env.VITE_OPENAI_API_KEY;
-    
-    if (!openaiApiKey) {
-      console.error('OpenAI API key not configured');
-      return questionText; // Fallback to original text
-    }
-
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openaiApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-3.5-turbo',
-        messages: [
-          {
-            role: 'system',
-            content: 'You are a helpful assistant that creates short, focused descriptions for finding similar GCSE maths questions. Your response should be a brief phrase (2-5 words) that captures the core mathematical concept being tested.'
-          },
-          {
-            role: 'user',
-            content: `Create a short description to find similar GCSE maths questions that test the same concept as this question: "${questionText}". For example if the question was "
-            
-(b) In one hour the shop sells 180 scoops of ice cream.
-
-The number of scoops of each flavour is shown in the table.
-
-Flavour	Vanilla	Strawberry	Chocolate	Mint
-Number of scoops	45	75	50	10
-
-Export to Sheets
-Complete the pie chart to represent the data."
-
-You could produce the description "Find questions that test pie charts"
-
-Or if the question was:
-
-"
-
-The diagram shows three circles, each of radius 4 cm.
-
-The centres of the circles are A, B and C such that ABC is a straight line and AB = BC = 4 cm.
-
-ork out the total area of the two shaded regions.
-
-Give your answer in terms of π"
-
-You could produce the description "Find questions that test circles area"`}],
-        max_tokens: 50,
-        temperature: 0.3
-      })
-    });
-
-    if (!response.ok) {
-      throw new Error(`OpenAI API error: ${response.status}`);
-    }
-
-    const data = await response.json();
-    const description = data.choices?.[0]?.message?.content?.trim();
-    
-    console.log('Generated search description:', description);
-    return description || questionText; // Fallback to original text if no response
-  } catch (error) {
-    console.error('Error generating search description:', error);
-    return questionText; // Fallback to original text
-  }
-};
 
 // Function to search Pinecone using REST API
 const searchPinecone = async (query: string, topK: number = 10) => {
@@ -263,17 +147,23 @@ function App() {
         setTopMatches(matches);
         setCurrentMatchIndex(0); // Start with the closest match
       } else {
-        // Fallback to local similarity if Pinecone fails
+        // Pinecone failed - show error message
         console.log("Pinecone failed");
-        const matches = findTopMatches(extractedText);
-        setTopMatches(matches);
+        setTopMatches([{
+          labelId: 'error',
+          text: 'Sorry, the search service is broken today. Please try again later.',
+          similarity: 0
+        }]);
         setCurrentMatchIndex(0);
-        console.log('Fallback to local matches:', matches);
       }
     } catch (error) {
       console.error("Error processing OCR:", error);
       setOcrResult('Error processing image');
-      setTopMatches([]);
+      setTopMatches([{
+        labelId: 'error',
+        text: 'Sorry, the search service is broken today. Please try again later.',
+        similarity: 0
+      }]);
       setCurrentMatchIndex(0);
     } finally {
       setIsProcessing(false);
@@ -353,16 +243,22 @@ function App() {
         setTopMatches(matches);
         setCurrentMatchIndex(0);
       } else {
-        // Fallback to local similarity
-        console.log("Pinecone failed, using local search");
-        const matches = findTopMatches(text);
-        setTopMatches(matches);
+        // Pinecone failed - show error message
+        console.log("Pinecone failed");
+        setTopMatches([{
+          labelId: 'error',
+          text: 'Sorry, the search service is broken today. Please try again later.',
+          similarity: 0
+        }]);
         setCurrentMatchIndex(0);
-        console.log('Local matches:', matches);
       }
     } catch (error) {
       console.error("Error searching by text:", error);
-      setTopMatches([]);
+      setTopMatches([{
+        labelId: 'error',
+        text: 'Sorry, the search service is broken today. Please try again later.',
+        similarity: 0
+      }]);
       setCurrentMatchIndex(0);
     } finally {
       setIsProcessing(false);
@@ -582,6 +478,29 @@ function App() {
             </div>
           </div>
         )}
+
+        {/* Premium Features */}
+        <div style={{ 
+          marginTop: '15px',
+          padding: '10px',
+          backgroundColor: '#f8f9fa',
+          borderRadius: '5px',
+          border: '1px solid #ddd'
+        }}>
+          <h4 style={{ 
+            margin: '0 0 8px 0', 
+            fontSize: '13px', 
+            color: '#007bff',
+            fontWeight: 'bold'
+          }}>
+            Premium Version Features:
+          </h4>
+          <div style={{ fontSize: '12px', color: '#666', lineHeight: '1.4' }}>
+            <div>• More GCSE subjects</div>
+            <div>• Mark scheme answers</div>
+            <div>• AI tutor</div>
+          </div>
+        </div>
       </div>
 
       {/* Large label image positioned to avoid overlap */}
