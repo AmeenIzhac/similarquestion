@@ -526,7 +526,7 @@ function App() {
         minHeight: '100vh'
       }}>
          {/* PDF Viewer Header */}
-         {currentMatch && !isProcessing && (
+         {!isProcessing && (
            <div style={{ 
              backgroundColor: '#fff', 
              borderBottom: '1px solid #ddd', 
@@ -545,27 +545,29 @@ function App() {
                <div style={{ width: '8px', height: '8px', backgroundColor: '#ff5f57', borderRadius: '50%' }}></div>
                <div style={{ width: '8px', height: '8px', backgroundColor: '#ffbd2e', borderRadius: '50%' }}></div>
                <div style={{ width: '8px', height: '8px', backgroundColor: '#28ca42', borderRadius: '50%' }}></div>
-               <span style={{ marginLeft: '15px', fontSize: '14px', color: '#666', fontFamily: 'monospace' }}>
-                 Question {currentMatchIndex + 1} of {topMatches.length}
-               </span>
+               {currentMatch && (
+                 <span style={{ marginLeft: '15px', fontSize: '14px', color: '#666', fontFamily: 'monospace' }}>
+                   Question {currentMatchIndex + 1} of {topMatches.length}
+                 </span>
+               )}
              </div>
              <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-             <span style={{ fontSize: '12px', color: '#999', fontFamily: 'monospace' }}>
-                 Exam Board WWW
-               </span>
-               <span style={{ fontSize: '12px', color: '#999', fontFamily: 'monospace' }}>
-                 GCSE Mathematics
-               </span>
-               <span style={{ fontSize: '12px', color: '#999', fontFamily: 'monospace' }}>
-                 Paper Y
-               </span>
-               <span style={{ fontSize: '12px', color: '#999', fontFamily: 'monospace' }}>
-                 XXXX Tier
-               </span>
-               <span style={{ fontSize: '12px', color: '#999', fontFamily: 'monospace' }}>
-                 Year ZZZZ
-               </span>
-             </div>
+              <span style={{ fontSize: '12px', color: '#999', fontFamily: 'monospace' }}>
+                  Exam Board WWW
+                </span>
+                 <span style={{ fontSize: '12px', color: '#999', fontFamily: 'monospace' }}>
+                   GCSE Mathematics
+                 </span>
+                 <span style={{ fontSize: '12px', color: '#999', fontFamily: 'monospace' }}>
+                   Paper Y
+                 </span>
+                 <span style={{ fontSize: '12px', color: '#999', fontFamily: 'monospace' }}>
+                   XXXX Tier
+                 </span>
+                 <span style={{ fontSize: '12px', color: '#999', fontFamily: 'monospace' }}>
+                   Year ZZZZ
+                 </span>
+               </div>
            </div>
          )}
 
