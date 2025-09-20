@@ -458,8 +458,8 @@ function App() {
                   
                   {/* Premium Features List */}
                   <div style={{ fontSize: '12px', color: '#666', lineHeight: '1.4' }}>
-                    <div>• More GCSE subjects</div>
                     <div>• Mark scheme answers</div>
+                    <div>• More GCSE subjects</div>
                     <div>• AI tutor</div>
                   </div>
                   
