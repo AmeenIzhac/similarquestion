@@ -525,34 +525,29 @@ function App() {
         position: 'relative',
         minHeight: '100vh'
       }}>
-        {/* Large label image */}
-        {currentMatch && !isProcessing && (
-          <div style={{ 
-            position: 'absolute',
-            top: '20px',
-            left: '20px',
-            right: '20px',
-            bottom: '20px',
-            zIndex: 1,
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center'
-          }}>
-            <img 
-              src={`/qs/${currentMatch.labelId}.png`}
-              alt={currentMatch.labelId}
-              style={{ 
-                maxWidth: '100%', 
-                maxHeight: '100%', 
-                width: 'auto', 
-                height: 'auto',
-                objectFit: 'contain',
-                border: '2px solid #333',
-                borderRadius: '8px'
-              }} 
-            />
-          </div>
-        )}
+         {/* Large label image */}
+         {currentMatch && !isProcessing && (
+           <div style={{ 
+             position: 'absolute',
+             top: '0',
+             left: '0',
+             right: '0',
+             bottom: '0',
+             zIndex: 1,
+             overflowY: "scroll",   // vertical scroll
+             overflowX: "hidden",   // no horizontal scroll
+           }}>
+             <img
+               src={`/qs/${currentMatch.labelId}.png`}
+               alt={currentMatch.labelId}
+               style={{
+                 width: "100%",       // scale image width to container
+                 height: "auto",      // keep aspect ratio
+                 display: "block",
+               }}
+             />
+           </div>
+         )}
 
         {/* Loading text when processing */}
         {isProcessing && (
