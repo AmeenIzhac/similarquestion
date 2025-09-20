@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { Mistral } from '@mistralai/mistralai';
+import jsPDF from 'jspdf';
 
 
 
@@ -57,6 +58,50 @@ function App() {
   const [emailError, setEmailError] = useState<string>('');
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(true);
 
+  // Function to generate PDF from image and display in iframe
+  const generatePDF = useCallback((imageSrc: string) => {
+    const doc = new jsPDF();
+    const img = new Image();
+    img.src = imageSrc;
+
+    img.onload = () => {
+      // Calculate dimensions to fit image on A4 page
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+      const imgWidth = img.width;
+      const imgHeight = img.height;
+      
+      // Calculate scaling to fit image on page with margins
+      const margin = 10;
+      const maxWidth = pageWidth - (margin * 2);
+      const maxHeight = pageHeight - (margin * 2);
+      
+      const scaleX = maxWidth / imgWidth;
+      const scaleY = maxHeight / imgHeight;
+      const scale = Math.min(scaleX, scaleY);
+      
+      const scaledWidth = imgWidth * scale;
+      const scaledHeight = imgHeight * scale;
+      
+       // Position image at top with horizontal centering, no vertical centering
+       const x = (pageWidth - scaledWidth) / 2;
+       const y = margin; // Position at top with margin
+      
+      doc.addImage(img, "PNG", x, y, scaledWidth, scaledHeight);
+      const pdfBlob = doc.output("blob");
+
+      // Make a blob URL and set it to the iframe
+      const pdfUrl = URL.createObjectURL(pdfBlob);
+      const iframe = document.getElementById("pdf-frame") as HTMLIFrameElement;
+      if (iframe) {
+        iframe.src = pdfUrl;
+      }
+    };
+
+    img.onerror = () => {
+      console.error('Failed to load image for PDF generation');
+    };
+  }, []);
 
   useEffect(() => {
     const mistralApiKey = import.meta.env.VITE_MISTRAL_API_KEY;
@@ -145,6 +190,12 @@ function App() {
         }));
         setTopMatches(matches);
         setCurrentMatchIndex(0); // Start with the closest match
+        
+        // Generate PDF for the first match
+        if (matches.length > 0) {
+          const imageSrc = `/qs/${matches[0].labelId}.png`;
+          generatePDF(imageSrc);
+        }
       } else {
         // Pinecone failed - show error message
         console.log("Pinecone failed");
@@ -212,13 +263,23 @@ function App() {
 
   const nextMatch = () => {
     if (topMatches.length > 0) {
-      setCurrentMatchIndex((prev) => (prev + 1) % topMatches.length);
+      const newIndex = (currentMatchIndex + 1) % topMatches.length;
+      setCurrentMatchIndex(newIndex);
+      
+      // Generate PDF for the new match
+      const imageSrc = `/qs/${topMatches[newIndex].labelId}.png`;
+      generatePDF(imageSrc);
     }
   };
 
   const prevMatch = () => {
     if (topMatches.length > 0) {
-      setCurrentMatchIndex((prev) => (prev - 1 + topMatches.length) % topMatches.length);
+      const newIndex = (currentMatchIndex - 1 + topMatches.length) % topMatches.length;
+      setCurrentMatchIndex(newIndex);
+      
+      // Generate PDF for the new match
+      const imageSrc = `/qs/${topMatches[newIndex].labelId}.png`;
+      generatePDF(imageSrc);
     }
   };
 
@@ -240,6 +301,12 @@ function App() {
         }));
         setTopMatches(matches);
         setCurrentMatchIndex(0);
+        
+        // Generate PDF for the first match
+        if (matches.length > 0) {
+          const imageSrc = `/qs/${matches[0].labelId}.png`;
+          generatePDF(imageSrc);
+        }
       } else {
         // Pinecone failed - show error message
         console.log("Pinecone failed");
@@ -261,7 +328,7 @@ function App() {
     } finally {
       setIsProcessing(false);
     }
-  }, []);
+  }, [generatePDF]);
 
   const handleTextSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -298,7 +365,7 @@ function App() {
               fontWeight: 'bold',
               color: '#333',
               flex: 1,
-              textAlign: 'center'
+              textAlign: 'left'
             }}>
               Find Similar GCSE Maths Questions
             </h1>
@@ -525,34 +592,56 @@ function App() {
         position: 'relative',
         minHeight: '100vh'
       }}>
-        {/* Large label image */}
-        {currentMatch && !isProcessing && (
-          <div style={{ 
-            position: 'absolute',
-            top: '20px',
-            left: '20px',
-            right: '20px',
-            bottom: '20px',
-            zIndex: 1,
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center'
-          }}>
-            <img 
-              src={`/qs/${currentMatch.labelId}.png`}
-              alt={currentMatch.labelId}
-              style={{ 
-                maxWidth: '100%', 
-                maxHeight: '100%', 
-                width: 'auto', 
-                height: 'auto',
-                objectFit: 'contain',
-                border: '2px solid #333',
-                borderRadius: '8px'
-              }} 
-            />
-          </div>
-        )}
+         {/* PDF Frame */}
+         <div style={{ 
+           position: 'absolute',
+           top: '20px',
+           left: '20px',
+           right: '20px',
+           bottom: '20px',
+           zIndex: 1,
+           display: 'flex',
+           justifyContent: 'center',
+           alignItems: 'center'
+         }}>
+           <iframe 
+             id="pdf-frame" 
+             width="100%" 
+             height="600px"
+             style={{
+               border: '2px solid #333',
+               borderRadius: '8px',
+               backgroundColor: '#fff'
+             }}
+           />
+         </div>
+
+         {/* Large label image - fallback (hidden, using PDF iframe instead) */}
+         {currentMatch && !isProcessing && (
+           <div style={{ 
+             position: 'absolute',
+             top: '20px',
+             left: '20px',
+             right: '20px',
+             bottom: '20px',
+             zIndex: 0,
+             display: 'none' // Hidden since we're using PDF iframe
+           }}>
+             <img 
+               src={`/qs/${currentMatch.labelId}.png`}
+               alt={currentMatch.labelId}
+               style={{ 
+                 maxWidth: '100%', 
+                 maxHeight: '100%', 
+                 width: 'auto', 
+                 height: 'auto',
+                 objectFit: 'contain',
+                 border: '2px solid #333',
+                 borderRadius: '8px'
+               }} 
+             />
+           </div>
+         )}
 
         {/* Loading text when processing */}
         {isProcessing && (
