@@ -1,5 +1,10 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { Mistral } from '@mistralai/mistralai';
+import { Document, Page, pdfjs } from 'react-pdf';
+import jsPDF from 'jspdf';
+
+// Set up PDF.js worker
+pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.js`;
 
 
 
@@ -48,7 +53,6 @@ const searchPinecone = async (query: string, topK: number = 10) => {
 function App() {
   const [imageUrl, setImageUrl] = useState<string>('');
   const [client, setClient] = useState<Mistral | null>(null);
-  const [ocrResult, setOcrResult] = useState<string>('');
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [topMatches, setTopMatches] = useState<Array<{ labelId: string; text: string; similarity: number }>>([]);
   const [currentMatchIndex, setCurrentMatchIndex] = useState<number>(0);
@@ -56,6 +60,9 @@ function App() {
   const [email, setEmail] = useState<string>('');
   const [emailSubmitted, setEmailSubmitted] = useState<boolean>(false);
   const [emailError, setEmailError] = useState<string>('');
+  const [sidebarOpen, setSidebarOpen] = useState<boolean>(true);
+  const [pdfUrl, setPdfUrl] = useState<string>('');
+  const [scale, setScale] = useState<number>(1.0);
 
 
   useEffect(() => {
@@ -65,6 +72,99 @@ function App() {
       setClient(new Mistral({ apiKey: mistralApiKey }));
     }
   }, []);
+
+  // Function to convert image to PDF
+  const convertImageToPdf = useCallback(async (imageUrl: string) => {
+    try {
+      console.log('Converting image to PDF:', imageUrl);
+      const img = new Image();
+      
+      return new Promise<string>((resolve, reject) => {
+        img.onload = () => {
+          try {
+            console.log('Image loaded, dimensions:', img.width, 'x', img.height);
+            
+            // Create a new PDF document
+            const pdf = new jsPDF({
+              orientation: img.width > img.height ? 'landscape' : 'portrait',
+              unit: 'mm',
+              format: 'a4'
+            });
+            
+            // Calculate dimensions to fit the image on the page
+            const pageWidth = pdf.internal.pageSize.getWidth();
+            const pageHeight = pdf.internal.pageSize.getHeight();
+            const imgWidth = img.width;
+            const imgHeight = img.height;
+            
+            console.log('Page dimensions:', pageWidth, 'x', pageHeight);
+            
+            // Calculate scaling to fit image on page
+            const scaleX = pageWidth / imgWidth;
+            const scaleY = pageHeight / imgHeight;
+            const scale = Math.min(scaleX, scaleY);
+            
+            const scaledWidth = imgWidth * scale;
+            const scaledHeight = imgHeight * scale;
+            
+            console.log('Scaled dimensions:', scaledWidth, 'x', scaledHeight);
+            
+            // Center the image on the page
+            const x = (pageWidth - scaledWidth) / 2;
+            const y = (pageHeight - scaledHeight) / 2;
+            
+            // Add image to PDF
+            pdf.addImage(img, 'PNG', x, y, scaledWidth, scaledHeight);
+            
+            // Generate PDF blob
+            const pdfBlob = pdf.output('blob');
+            const url = URL.createObjectURL(pdfBlob);
+            console.log('PDF generated successfully, URL:', url);
+            resolve(url);
+          } catch (error) {
+            console.error('Error in PDF generation:', error);
+            reject(error);
+          }
+        };
+        
+        img.onerror = (error) => {
+          console.error('Failed to load image:', error);
+          reject(new Error('Failed to load image'));
+        };
+        img.crossOrigin = 'anonymous';
+        img.src = imageUrl;
+      });
+    } catch (error) {
+      console.error('Error converting image to PDF:', error);
+      return '';
+    }
+  }, []);
+
+  // PDF event handlers
+  const onDocumentLoadSuccess = () => {
+    console.log('PDF loaded successfully');
+  };
+
+  const onDocumentLoadError = (error: Error) => {
+    console.error('Error loading PDF:', error);
+    console.error('PDF URL:', pdfUrl);
+    // Try to fallback to image display if PDF fails
+    if (currentMatch?.labelId) {
+      console.log('Falling back to image display');
+    }
+  };
+
+  const zoomIn = () => {
+    setScale(prev => Math.min(prev + 0.25, 3.0));
+  };
+
+  const zoomOut = () => {
+    setScale(prev => Math.max(prev - 0.25, 0.5));
+  };
+
+  const resetZoom = () => {
+    setScale(1.0);
+  };
 
   const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -133,7 +233,6 @@ function App() {
       
       console.log(ocrResponse);
       const extractedText = ocrResponse.pages?.[0]?.markdown || 'No text found';
-      setOcrResult(extractedText);
       
       // Find similar questions using Pinecone with extracted text
       const pineconeResults = await searchPinecone(extractedText);
@@ -146,6 +245,13 @@ function App() {
         }));
         setTopMatches(matches);
         setCurrentMatchIndex(0); // Start with the closest match
+        
+        // Convert the first match to PDF
+        if (matches.length > 0) {
+          const imageUrl = `/qs/${matches[0].labelId}.png`;
+          const pdfUrl = await convertImageToPdf(imageUrl);
+          setPdfUrl(pdfUrl);
+        }
       } else {
         // Pinecone failed - show error message
         console.log("Pinecone failed");
@@ -158,7 +264,6 @@ function App() {
       }
     } catch (error) {
       console.error("Error processing OCR:", error);
-      setOcrResult('Error processing image');
       setTopMatches([{
         labelId: 'error',
         text: 'Sorry, the search service is broken today. Please try again later.',
@@ -212,15 +317,27 @@ function App() {
     };
   }, [handlePaste]);
 
-  const nextMatch = () => {
+  const nextMatch = async () => {
     if (topMatches.length > 0) {
-      setCurrentMatchIndex((prev) => (prev + 1) % topMatches.length);
+      const newIndex = (currentMatchIndex + 1) % topMatches.length;
+      setCurrentMatchIndex(newIndex);
+      
+      // Convert the new image to PDF
+      const imageUrl = `/qs/${topMatches[newIndex].labelId}.png`;
+      const pdfUrl = await convertImageToPdf(imageUrl);
+      setPdfUrl(pdfUrl);
     }
   };
 
-  const prevMatch = () => {
+  const prevMatch = async () => {
     if (topMatches.length > 0) {
-      setCurrentMatchIndex((prev) => (prev - 1 + topMatches.length) % topMatches.length);
+      const newIndex = (currentMatchIndex - 1 + topMatches.length) % topMatches.length;
+      setCurrentMatchIndex(newIndex);
+      
+      // Convert the new image to PDF
+      const imageUrl = `/qs/${topMatches[newIndex].labelId}.png`;
+      const pdfUrl = await convertImageToPdf(imageUrl);
+      setPdfUrl(pdfUrl);
     }
   };
 
@@ -242,6 +359,13 @@ function App() {
         }));
         setTopMatches(matches);
         setCurrentMatchIndex(0);
+        
+        // Convert the first match to PDF
+        if (matches.length > 0) {
+          const imageUrl = `/qs/${matches[0].labelId}.png`;
+          const pdfUrl = await convertImageToPdf(imageUrl);
+          setPdfUrl(pdfUrl);
+        }
       } else {
         // Pinecone failed - show error message
         console.log("Pinecone failed");
@@ -273,110 +397,74 @@ function App() {
   };
 
   return (
-    <div style={{ position: 'relative', minHeight: '100vh' }}>
-      {/* Title */}
-      <h1 style={{ 
-        position: 'absolute',
-        top: '10px',
-        left: '50%',
-        transform: 'translateX(-50%)',
-        zIndex: 10,
-        margin: 0,
-        fontSize: '20px',
-        fontWeight: 'bold',
-        color: '#333',
-        textAlign: 'center'
-      }}>
-        Find Similar GCSE Maths Questions
-      </h1>
-
-      {/* Email Signup Form */}
-      <div style={{ 
-        position: 'absolute',
-        top: '10px',
-        right: '10px',
-        zIndex: 10,
+    <div style={{ display: 'flex', minHeight: '100vh' }}>
+      {/* Sidebar */}
+      <div style={{
+        width: sidebarOpen ? '300px' : '50px',
+        minHeight: '100vh',
         backgroundColor: '#f8f9fa',
-        padding: '10px',
-        borderRadius: '8px',
-        border: '2px solid #333'
+        borderRight: '2px solid #ccc',
+        display: 'flex',
+        flexDirection: 'column',
+        transition: 'width 0.3s ease',
+        position: 'relative'
       }}>
-        {!emailSubmitted ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-            <p style={{ 
-              margin: 0, 
-              fontSize: '16px', 
-              color: '#007bff', 
+        {/* Header with Title and Toggle */}
+        <div style={{ 
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '10px 15px',
+          borderBottom: '1px solid #ddd'
+        }}>
+          {sidebarOpen && (
+            <h1 style={{ 
+              margin: 0,
+              fontSize: '18px',
               fontWeight: 'bold',
+              color: '#333',
+              flex: 1,
               textAlign: 'center'
             }}>
-              Enter email for access to Premium Version! 🔥
-            </p>
-            <form onSubmit={handleEmailSubmit} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="Enter your email for updates"
-                style={{
-                  padding: '8px 12px',
-                  border: '2px solid #333',
-                  borderRadius: '4px',
-                  fontSize: '14px',
-                  width: '280px'
-                }}
-              />
-              <button
-                type="submit"
-                style={{
-                  padding: '8px 16px',
-                  backgroundColor: email.trim() ? '#28a745' : '#ccc',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: email.trim() ? 'pointer' : 'not-allowed',
-                  fontSize: '14px',
-                  fontWeight: 'bold'
-                }}
-                disabled={!email.trim()}
-              >
-                Submit
-              </button>
-            </form>
-            {emailError && (
-              <p style={{ color: 'red', fontSize: '12px', margin: 0, textAlign: 'center' }}>
-                {emailError}
-              </p>
-            )}
-          </div>
-        ) : (
-          <p style={{ color: '#28a745', fontSize: '14px', margin: 0, fontWeight: 'bold', textAlign: 'center' }}>
-            Thank you for signing up! ✓
-          </p>
-        )}
-      </div>
+              Find Similar GCSE Maths Questions
+            </h1>
+          )}
+          <button
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            style={{
+              width: '40px',
+              height: '40px',
+              backgroundColor: 'transparent',
+              color: '#333',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '16px',
+              fontWeight: 'bold',
+              marginLeft: sidebarOpen ? '10px' : '0'
+            }}
+          >
+            <svg width="24" height="24" viewBox="0 0 20 20" fill="currentColor">
+              <path d="M6.83496 3.99992C6.38353 4.00411 6.01421 4.0122 5.69824 4.03801C5.31232 4.06954 5.03904 4.12266 4.82227 4.20012L4.62207 4.28606C4.18264 4.50996 3.81498 4.85035 3.55859 5.26848L3.45605 5.45207C3.33013 5.69922 3.25006 6.01354 3.20801 6.52824C3.16533 7.05065 3.16504 7.71885 3.16504 8.66301V11.3271C3.16504 12.2712 3.16533 12.9394 3.20801 13.4618C3.25006 13.9766 3.33013 14.2909 3.45605 14.538L3.55859 14.7216C3.81498 15.1397 4.18266 15.4801 4.62207 15.704L4.82227 15.79C5.03904 15.8674 5.31234 15.9205 5.69824 15.9521C6.01398 15.9779 6.383 15.986 6.83398 15.9902L6.83496 3.99992ZM18.165 11.3271C18.165 12.2493 18.1653 12.9811 18.1172 13.5702C18.0745 14.0924 17.9916 14.5472 17.8125 14.9648L17.7295 15.1415C17.394 15.8 16.8834 16.3511 16.2568 16.7353L15.9814 16.8896C15.5157 17.1268 15.0069 17.2285 14.4102 17.2773C13.821 17.3254 13.0893 17.3251 12.167 17.3251H7.83301C6.91071 17.3251 6.17898 17.3254 5.58984 17.2773C5.06757 17.2346 4.61294 17.1508 4.19531 16.9716L4.01855 16.8896C3.36014 16.5541 2.80898 16.0434 2.4248 15.4169L2.27051 15.1415C2.03328 14.6758 1.93158 14.167 1.88281 13.5702C1.83468 12.9811 1.83496 12.2493 1.83496 11.3271V8.66301C1.83496 7.74072 1.83468 7.00898 1.88281 6.41985C1.93157 5.82309 2.03329 5.31432 2.27051 4.84856L2.4248 4.57317C2.80898 3.94666 3.36012 3.436 4.01855 3.10051L4.19531 3.0175C4.61285 2.83843 5.06771 2.75548 5.58984 2.71281C6.17898 2.66468 6.91071 2.66496 7.83301 2.66496H12.167C13.0893 2.66496 13.821 2.66468 14.4102 2.71281C15.0069 2.76157 15.5157 2.86329 15.9814 3.10051L16.2568 3.25481C16.8833 3.63898 17.394 4.19012 17.7295 4.84856L17.8125 5.02531C17.9916 5.44285 18.0745 5.89771 18.1172 6.41985C18.1653 7.00898 18.165 7.74072 18.165 8.66301V11.3271ZM8.16406 15.995H12.167C13.1112 15.995 13.7794 15.9947 14.3018 15.9521C14.8164 15.91 15.1308 15.8299 15.3779 15.704L15.5615 15.6015C15.9797 15.3451 16.32 14.9774 16.5439 14.538L16.6299 14.3378C16.7074 14.121 16.7605 13.8478 16.792 13.4618C16.8347 12.9394 16.835 12.2712 16.835 11.3271V8.66301C16.835 7.71885 16.8347 7.05065 16.792 6.52824C16.7605 6.14232 16.7073 5.86904 16.6299 5.65227L16.5439 5.45207C16.32 5.01264 15.9796 4.64498 15.5615 4.3886L15.3779 4.28606C15.1308 4.16013 14.8165 4.08006 14.3018 4.03801C13.7794 3.99533 13.1112 3.99504 12.167 3.99504H8.16406C8.16407 3.99667 8.16504 3.99829 8.16504 3.99992L8.16406 15.995Z"></path>
+            </svg>
+          </button>
+        </div>
 
-      {/* Upload controls in top left */}
-      <div style={{ 
-        position: 'absolute', 
-        margin: '5px',
-        top: '80px', // Adjusted position
-        left: '20px',
-        zIndex: 10,
-        backgroundColor: 'rgba(255, 255, 255, 0.9)',
-        padding: '10px',
-        borderRadius: '5px',
-        border: '2px solid #333',
-        minWidth: '220px'
-      }}>
-        {/* Image upload section */}
-        <div style={{ marginBottom: '15px' }}>
-          <h3 style={{ margin: '0 0 10px 0', fontSize: '14px', color: '#333' }}>Upload Image:</h3>
+        {/* Sidebar Content */}
+          {sidebarOpen && (
+          <div style={{ padding: '15px', overflowY: 'auto' }}>
+
+         {/* Image upload section */}
+            <div style={{ marginBottom: '20px' }}>
+              <h3 style={{ margin: '0 0 10px 0', fontSize: '14px', color: '#333' }}>Upload Image:</h3>
           {imageUrl && (
             <img 
               src={imageUrl} 
               alt="Uploaded" 
-              style={{ maxWidth: '200px', height: 'auto', marginBottom: '10px' }} 
+                  style={{ maxWidth: '100%', height: 'auto', marginBottom: '10px', borderRadius: '4px' }} 
             />
           )}
           <input 
@@ -384,79 +472,73 @@ function App() {
             accept="image/*" 
             onChange={handleFileUpload}
             style={{
-              color: 'transparent',
-              width: '100px'
-            }}
-          />
-          <p style={{ fontSize: '12px', color: '#666', marginTop: '5px' }}>
+                  color: 'transparent',
+                    width: '100%',
+                  marginBottom: '5px'
+                }}
+              />
+              <p style={{ fontSize: '11px', color: '#666', margin: 0 }}>
             Or paste an image with Ctrl+V
           </p>
         </div>
 
         {/* Text search section */}
-        <div>
-          <h3 style={{ margin: '0 0 10px 0', fontSize: '14px', color: '#333' }}>Or Search by Text:</h3>
-          <form onSubmit={handleTextSearch} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <div style={{ marginBottom: '20px' }}>
+              <h3 style={{ margin: '0 0 10px 0', fontSize: '14px', color: '#333' }}>Or Search by Text:</h3>
+              <form onSubmit={handleTextSearch} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             <textarea
               value={searchText}
               onChange={(e) => setSearchText(e.target.value)}
               placeholder="Describe the type of question... (e.g., 'hard quadratic equations', 'trigonometry')"
               style={{
-                width: '200px',
-                height: '60px',
-                padding: '8px',
-                border: '2px solid #333',
-                borderRadius: '4px',
-                fontSize: '12px',
-                resize: 'none'
+                      width: '100%',
+                    height: '60px',
+                    padding: '8px',
+                    border: '2px solid #333',
+                    borderRadius: '4px',
+                    fontSize: '12px',
+                      resize: 'none',
+                    boxSizing: 'border-box'
               }}
             />
             <button
               type="submit"
               disabled={!searchText.trim() || isProcessing}
               style={{
-                padding: '8px 12px',
-                backgroundColor: searchText.trim() && !isProcessing ? '#28a745' : '#ccc',
-                color: 'white',
+                    padding: '8px 12px',
+                    backgroundColor: searchText.trim() && !isProcessing ? '#28a745' : '#ccc',
+                    color: 'white',
                 border: 'none',
-                borderRadius: '4px',
+                    borderRadius: '4px',
                 cursor: searchText.trim() && !isProcessing ? 'pointer' : 'not-allowed',
-                fontSize: '12px',
-                fontWeight: 'bold'
+                    fontSize: '12px',
+                    fontWeight: 'bold'
               }}
             >
               {isProcessing ? 'Searching...' : 'Search'}
             </button>
           </form>
-        </div>
-
-        {/* OCR Results */}
-        {isProcessing && (
-          <p style={{ fontSize: '12px', color: '#007bff', marginTop: '10px' }}>
-            Processing...
-          </p>
-        )}
 
         {/* Navigation controls */}
         {topMatches.length > 0 && (
-          <div style={{ 
-            marginTop: '10px',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: '10px'
-          }}>
+           <div style={{ 
+                  marginTop: '10px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: '10px'
+                }}>
             <div style={{ display: 'flex', gap: '10px' }}>
               <button 
                 onClick={prevMatch}
                 style={{
-                  padding: '8px 12px',
+                        padding: '8px 12px',
                   backgroundColor: '#007bff',
                   color: 'white',
                   border: 'none',
                   borderRadius: '4px',
                   cursor: 'pointer',
-                  fontSize: '12px'
+                        fontSize: '12px'
                 }}
               >
                 Previous
@@ -464,13 +546,13 @@ function App() {
               <button 
                 onClick={nextMatch}
                 style={{
-                  padding: '8px 12px',
-                  backgroundColor: '#28a745',
+                        padding: '8px 12px',
+                        backgroundColor: '#28a745',
                   color: 'white',
                   border: 'none',
                   borderRadius: '4px',
                   cursor: 'pointer',
-                  fontSize: '12px'
+                        fontSize: '12px'
                 }}
               >
                 Next
@@ -478,89 +560,329 @@ function App() {
             </div>
           </div>
         )}
-
-        {/* Premium Features */}
-        <div style={{ 
-          marginTop: '15px',
-          padding: '10px',
-          backgroundColor: '#f8f9fa',
-          borderRadius: '5px',
-          border: '1px solid #ddd'
-        }}>
-          <h4 style={{ 
-            margin: '0 0 8px 0', 
-            fontSize: '13px', 
-            color: '#007bff',
-            fontWeight: 'bold'
-          }}>
-            Premium Version Features:
-          </h4>
-          <div style={{ fontSize: '12px', color: '#666', lineHeight: '1.4' }}>
-            <div>• More GCSE subjects</div>
-            <div>• Mark scheme answers</div>
-            <div>• AI tutor</div>
           </div>
-        </div>
-      </div>
 
-      {/* Large label image positioned to avoid overlap */}
-      {currentMatch && !isProcessing && (
+          {/* Email Signup Form */}
+          <div style={{ 
+              backgroundColor: '#fff',
+              padding: '15px',
+            borderRadius: '8px',
+              border: '2px solid #333',
+              marginBottom: '20px'
+          }}>
+            {!emailSubmitted ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <p style={{ 
+                  margin: 0, 
+                  fontSize: '14px', 
+                  color: '#007bff', 
+                    fontWeight: 'bold',
+                    textAlign: 'center'
+                  }}>
+                    Enter email for access to Premium Version! 🔥
+                  </p>
+                  
+                  {/* Premium Features List */}
+                  <div style={{ fontSize: '12px', color: '#666', lineHeight: '1.4' }}>
+                    <div>• More GCSE subjects</div>
+                    <div>• Mark scheme answers</div>
+                    <div>• AI tutor</div>
+                  </div>
+                  
+                  <form onSubmit={handleEmailSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                      placeholder="Enter your email for updates"
+                    style={{
+                        padding: '8px 12px',
+                        border: '2px solid #333',
+                      borderRadius: '4px',
+                      fontSize: '12px',
+                        width: '100%',
+                        boxSizing: 'border-box'
+                    }}
+                  />
+                  <button
+                    type="submit"
+                    style={{
+                        padding: '8px 16px',
+                      backgroundColor: email.trim() ? '#28a745' : '#ccc',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '4px',
+                      cursor: email.trim() ? 'pointer' : 'not-allowed',
+                      fontSize: '12px',
+                      fontWeight: 'bold'
+                    }}
+                    disabled={!email.trim()}
+                  >
+                    Submit
+                  </button>
+                </form>
+                {emailError && (
+                    <p style={{ color: 'red', fontSize: '11px', margin: 0, textAlign: 'center' }}>
+                    {emailError}
+                  </p>
+                )}
+              </div>
+            ) : (
+                <p style={{ color: '#28a745', fontSize: '12px', margin: 0, fontWeight: 'bold', textAlign: 'center' }}>
+                Thank you for signing up! ✓
+                </p>
+              )}
+            </div>
+
+            {/* OCR Results */}
+            {isProcessing && (
+              <p style={{ fontSize: '12px', color: '#007bff', marginBottom: '15px' }}>
+                Processing...
+              </p>
+            )}
+
+          </div>
+        )}
+        </div>
+
+        {/* Main Content Area - PDF Viewer */}
         <div style={{ 
-          position: 'absolute',
-          top: '120px', // Moved down to start under email input
-          left: '250px', // Start after the small image area
-          right: '20px', // Leave some margin from right edge
-          bottom: '20px', // Add bottom margin
-          zIndex: 1,
+          flex: 1,
+          position: 'relative',
+          minHeight: '100vh',
+          backgroundColor: '#f5f5f5',
           display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center'
+          flexDirection: 'column'
+        }}>
+          {/* PDF Viewer Header */}
+          {currentMatch && !isProcessing && pdfUrl && (
+            <div style={{ 
+              backgroundColor: '#fff',
+              borderBottom: '1px solid #ddd',
+              padding: '10px 20px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                <div style={{
+                  width: '8px',
+                  height: '8px',
+                  backgroundColor: '#ff5f57',
+                  borderRadius: '50%'
+                }}></div>
+                <div style={{
+                  width: '8px',
+                  height: '8px',
+                  backgroundColor: '#ffbd2e',
+                  borderRadius: '50%'
+                }}></div>
+                <div style={{
+                  width: '8px',
+                  height: '8px',
+                  backgroundColor: '#28ca42',
+                  borderRadius: '50%'
+                }}></div>
+                <span style={{ 
+                  marginLeft: '15px',
+                  fontSize: '14px',
+                  color: '#666',
+                  fontFamily: 'monospace'
+                }}>
+                  Question {currentMatchIndex + 1} of {topMatches.length}
+                </span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <span style={{ 
+                  fontSize: '12px',
+                  color: '#999',
+                  fontFamily: 'monospace'
+                }}>
+                  Similarity: {(currentMatch.similarity * 100).toFixed(1)}%
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* PDF Content Area */}
+          <div style={{ 
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden'
+          }}>
+            {/* PDF Controls */}
+            {currentMatch && !isProcessing && pdfUrl && (
+              <div style={{
+                backgroundColor: '#fff',
+                borderBottom: '1px solid #ddd',
+                padding: '10px 20px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px'
+              }}>
+                <button
+                  onClick={zoomOut}
+                  style={{
+                    padding: '5px 10px',
+                    backgroundColor: '#f8f9fa',
+                    border: '1px solid #ddd',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    fontSize: '12px'
+                  }}
+                >
+                  Zoom Out
+                </button>
+                <span style={{ fontSize: '12px', color: '#666' }}>
+                  {Math.round(scale * 100)}%
+                </span>
+                <button
+                  onClick={zoomIn}
+                  style={{
+                    padding: '5px 10px',
+                    backgroundColor: '#f8f9fa',
+                    border: '1px solid #ddd',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    fontSize: '12px'
+                  }}
+                >
+                  Zoom In
+                </button>
+                <button
+                  onClick={resetZoom}
+                  style={{
+                    padding: '5px 10px',
+                    backgroundColor: '#f8f9fa',
+                    border: '1px solid #ddd',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    fontSize: '12px'
+                  }}
+                >
+                  Reset
+                </button>
+              </div>
+            )}
+
+            {/* PDF Viewer */}
+            {currentMatch && !isProcessing && (
+              <div style={{ 
+                flex: 1,
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'flex-start',
+                padding: '20px',
+                overflow: 'auto',
+                backgroundColor: '#f5f5f5'
+              }}>
+                <div style={{
+                  backgroundColor: '#fff',
+                  boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+                  borderRadius: '8px',
+                  padding: '20px',
+                  maxWidth: '100%',
+                  maxHeight: '100%'
+                }}>
+                  {pdfUrl ? (
+                    <Document
+                      file={pdfUrl}
+                      onLoadSuccess={onDocumentLoadSuccess}
+                      onLoadError={onDocumentLoadError}
+                    >
+                      <Page
+                        pageNumber={1}
+                        scale={scale}
+                        renderTextLayer={false}
+                        renderAnnotationLayer={false}
+                      />
+                    </Document>
+                  ) : (
+                    // Fallback to image display
+                    <div style={{
+              display: 'flex',
+              justifyContent: 'center',
+                      alignItems: 'center',
+                      minHeight: '400px'
         }}>
           <img 
             src={`/qs/${currentMatch.labelId}.png`}
-            alt={currentMatch.labelId}
+                        alt="Question"
             style={{ 
               maxWidth: '100%', 
-              maxHeight: '85vh', 
-              width: 'auto', 
-              height: 'auto',
+                  maxHeight: '100%', 
               objectFit: 'contain',
-              border: '2px solid #333'
+                          transform: `scale(${scale})`,
+                          transformOrigin: 'center'
             }} 
           />
         </div>
       )}
+                </div>
+              </div>
+            )}
 
-      {/* Loading text when processing */}
-      {isProcessing && (
-        <div style={{ 
-          position: 'absolute',
-          top: '50%',
-          left: '250px', // Start after the small image area
-          right: '20px', // Leave some margin from right edge
-          transform: 'translateY(-50%)',
-          zIndex: 1,
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          backgroundColor: 'rgba(255, 255, 255, 0.9)',
-          borderRadius: '10px'
-        }}>
-          <div style={{ 
-            textAlign: 'center',
-            padding: '40px',
-            fontSize: '18px',
-            color: '#007bff',
-            fontWeight: 'bold'
-          }}>
-            Processing...
-            <br />
-            <span style={{ fontSize: '14px', color: '#666', fontWeight: 'normal' }}>
+            {/* Loading state */}
+            {isProcessing && (
+              <div style={{ 
+                flex: 1,
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                borderRadius: '10px',
+                margin: '20px',
+                boxShadow: '0 4px 20px rgba(0,0,0,0.1)'
+              }}>
+                <div style={{ 
+                  textAlign: 'center',
+                  fontSize: '18px',
+                  color: '#007bff',
+                  fontWeight: 'bold'
+                }}>
+                  <div style={{
+                    width: '40px',
+                    height: '40px',
+                    border: '4px solid #f3f3f3',
+                    borderTop: '4px solid #007bff',
+                    borderRadius: '50%',
+                    animation: 'spin 1s linear infinite',
+                    margin: '0 auto 20px auto'
+                  }}></div>
+                  Processing...
+                  <br />
+                  <span style={{ fontSize: '14px', color: '#666', fontWeight: 'normal' }}>
               Finding similar questions...
-            </span>
+                  </span>
+                </div>
+            </div>
+          )}
+
+            {/* Empty state */}
+          {!currentMatch && !isProcessing && (
+              <div style={{ 
+                flex: 1,
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                borderRadius: '10px',
+                margin: '20px',
+                boxShadow: '0 4px 20px rgba(0,0,0,0.1)'
+              }}>
+              <div style={{ 
+                  textAlign: 'center',
+                fontSize: '16px', 
+                  color: '#666'
+              }}>
+                  Upload an image or search for questions to get started
           </div>
         </div>
       )}
+        </div>
+      </div>
     </div>
   );
 }
