@@ -525,11 +525,55 @@ function App() {
         position: 'relative',
         minHeight: '100vh'
       }}>
+         {/* PDF Viewer Header */}
+         {currentMatch && !isProcessing && (
+           <div style={{ 
+             backgroundColor: '#fff', 
+             borderBottom: '1px solid #ddd', 
+             padding: '10px 20px', 
+             display: 'flex', 
+             alignItems: 'center', 
+             justifyContent: 'space-between', 
+             boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+             position: 'absolute',
+             top: '0',
+             left: '0',
+             right: '0',
+             zIndex: 2
+           }}>
+             <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+               <div style={{ width: '8px', height: '8px', backgroundColor: '#ff5f57', borderRadius: '50%' }}></div>
+               <div style={{ width: '8px', height: '8px', backgroundColor: '#ffbd2e', borderRadius: '50%' }}></div>
+               <div style={{ width: '8px', height: '8px', backgroundColor: '#28ca42', borderRadius: '50%' }}></div>
+               <span style={{ marginLeft: '15px', fontSize: '14px', color: '#666', fontFamily: 'monospace' }}>
+                 Question {currentMatchIndex + 1} of {topMatches.length}
+               </span>
+             </div>
+             <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+             <span style={{ fontSize: '12px', color: '#999', fontFamily: 'monospace' }}>
+                 Exam Board WWW
+               </span>
+               <span style={{ fontSize: '12px', color: '#999', fontFamily: 'monospace' }}>
+                 GCSE Mathematics
+               </span>
+               <span style={{ fontSize: '12px', color: '#999', fontFamily: 'monospace' }}>
+                 Paper Y
+               </span>
+               <span style={{ fontSize: '12px', color: '#999', fontFamily: 'monospace' }}>
+                 XXXX Tier
+               </span>
+               <span style={{ fontSize: '12px', color: '#999', fontFamily: 'monospace' }}>
+                 Year ZZZZ
+               </span>
+             </div>
+           </div>
+         )}
+
          {/* Large label image */}
          {currentMatch && !isProcessing && (
            <div style={{ 
              position: 'absolute',
-             top: '0',
+             top: '50px',  // Account for header height
              left: '0',
              right: '0',
              bottom: '0',
