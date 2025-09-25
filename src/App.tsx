@@ -526,7 +526,7 @@ function App() {
         minHeight: '100vh'
       }}>
          {/* PDF Viewer Header */}
-         {!isProcessing && (
+         {/* {!isProcessing && (
            <div style={{ 
              backgroundColor: '#fff', 
              borderBottom: '1px solid #ddd', 
@@ -569,7 +569,7 @@ function App() {
                  </span>
                </div>
            </div>
-         )}
+         )} */}
 
          {/* Large label image */}
          {currentMatch && !isProcessing && (
