@@ -56,6 +56,7 @@ function App() {
   const [emailSubmitted, setEmailSubmitted] = useState<boolean>(false);
   const [emailError, setEmailError] = useState<string>('');
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(true);
+  const [showMarkScheme, setShowMarkScheme] = useState<boolean>(false);
 
 
   useEffect(() => {
@@ -523,86 +524,105 @@ function App() {
       <div style={{ 
         flex: 1,
         position: 'relative',
-        minHeight: '100vh'
+        minHeight: '100vh',
+        display: 'flex',
+        flexDirection: 'column'
       }}>
-         {/* PDF Viewer Header */}
-         {/* {!isProcessing && (
-           <div style={{ 
-             backgroundColor: '#fff', 
-             borderBottom: '1px solid #ddd', 
-             padding: '10px 20px', 
-             display: 'flex', 
-             alignItems: 'center', 
-             justifyContent: 'space-between', 
-             boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-             position: 'absolute',
-             top: '0',
-             left: '0',
-             right: '0',
-             zIndex: 2
-           }}>
-             <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-               <div style={{ width: '8px', height: '8px', backgroundColor: '#ff5f57', borderRadius: '50%' }}></div>
-               <div style={{ width: '8px', height: '8px', backgroundColor: '#ffbd2e', borderRadius: '50%' }}></div>
-               <div style={{ width: '8px', height: '8px', backgroundColor: '#28ca42', borderRadius: '50%' }}></div>
-               {currentMatch && (
-                 <span style={{ marginLeft: '15px', fontSize: '14px', color: '#666', fontFamily: 'monospace' }}>
-                   Question {currentMatchIndex + 1} of {topMatches.length}
-                 </span>
-               )}
-             </div>
-             <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-              <span style={{ fontSize: '12px', color: '#999', fontFamily: 'monospace' }}>
-                  Exam Board WWW
-                </span>
-                 <span style={{ fontSize: '12px', color: '#999', fontFamily: 'monospace' }}>
-                   GCSE Mathematics
-                 </span>
-                 <span style={{ fontSize: '12px', color: '#999', fontFamily: 'monospace' }}>
-                   Paper Y
-                 </span>
-                 <span style={{ fontSize: '12px', color: '#999', fontFamily: 'monospace' }}>
-                   XXXX Tier
-                 </span>
-                 <span style={{ fontSize: '12px', color: '#999', fontFamily: 'monospace' }}>
-                   Year ZZZZ
-                 </span>
-               </div>
-           </div>
-         )} */}
+        {currentMatch && !isProcessing && currentMatch.labelId !== 'error' && (
+          <>
+            <div style={{
+              flex: showMarkScheme ? '0 0 50%' : '1 1 auto',
+              overflowY: 'auto',
+              overflowX: 'auto',
+              padding: '20px',
+              boxSizing: 'border-box',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '16px'
+            }}>
+              <div style={{
+                flex: '1 1 auto',
+                overflow: 'auto'
+              }}>
+                <img
+                  src={`/edexcel-gcse-maths-questions/${currentMatch.labelId}`}
+                  alt={currentMatch.labelId}
+                  style={{
+                    display: 'block',
+                    margin: '0 auto'
+                  }}
+                />
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                <button
+                  onClick={() => setShowMarkScheme((prev) => !prev)}
+                  style={{
+                    padding: '10px 14px',
+                    backgroundColor: showMarkScheme ? '#dc3545' : '#007bff',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    fontSize: '13px',
+                    fontWeight: 600,
+                    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.15)'
+                  }}
+                >
+                  {showMarkScheme ? 'Hide mark scheme' : 'View mark scheme'}
+                </button>
+              </div>
+            </div>
+            {showMarkScheme && (
+              <div style={{
+                flex: '0 0 50%',
+                overflowY: 'auto',
+                overflowX: 'auto',
+                padding: '20px',
+                boxSizing: 'border-box',
+                borderTop: '2px solid #ddd',
+                backgroundColor: '#ffffff'
+              }}>
+                <div style={{
+                  width: '100%',
+                  height: '100%',
+                  overflow: 'auto'
+                }}>
+                  <img
+                    src={`/edexcel-gcse-maths-answers/${currentMatch.labelId}`}
+                    alt={`${currentMatch.labelId} mark scheme`}
+                    style={{
+                      display: 'block',
+                      margin: '0 auto'
+                    }}
+                  />
+                </div>
+              </div>
+            )}
+          </>
+        )}
 
-         {/* Large label image */}
-         {currentMatch && !isProcessing && (
-           <div style={{ 
-             position: 'absolute',
-             top: '50px',  // Account for header height
-             left: '0',
-             right: '0',
-             bottom: '0',
-             zIndex: 1,
-             overflowY: "scroll",   // vertical scroll
-             overflowX: "hidden",   // no horizontal scroll
-           }}>
-             <img
-               src={`/edexcel-gcse-maths-questions/${currentMatch.labelId}`}
-               alt={currentMatch.labelId}
-               style={{
-                 width: "100%",       // scale image width to container
-                 height: "auto",      // keep aspect ratio
-                 display: "block",
-               }}
-             />
-           </div>
-         )}
+        {currentMatch && !isProcessing && currentMatch.labelId === 'error' && (
+          <div style={{
+            flex: 1,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '40px',
+            textAlign: 'center',
+            color: '#555',
+            fontSize: '16px'
+          }}>
+            {currentMatch.text}
+          </div>
+        )}
 
-        {/* Loading text when processing */}
         {isProcessing && (
           <div style={{ 
             position: 'absolute',
             top: '50%',
             left: '50%',
             transform: 'translate(-50%, -50%)',
-            zIndex: 1,
+            zIndex: 2,
             display: 'flex',
             justifyContent: 'center',
             alignItems: 'center',
