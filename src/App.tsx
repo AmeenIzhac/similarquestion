@@ -584,7 +584,7 @@ function App() {
              overflowX: "hidden",   // no horizontal scroll
            }}>
              <img
-               src={`/qs/${currentMatch.labelId}.png`}
+               src={`/edexcel-gcse-maths-questions/${currentMatch.labelId}`}
                alt={currentMatch.labelId}
                style={{
                  width: "100%",       // scale image width to container
