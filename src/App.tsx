@@ -526,34 +526,28 @@ function App() {
       <div style={{ 
         flex: 1,
         position: 'relative',
-        minHeight: '100vh',
+        height: '100vh',
         display: 'flex',
         flexDirection: 'column'
       }}>
         {currentMatch && !isProcessing && currentMatch.labelId !== 'error' && (
           <>
             <div style={{
-              flex: showMarkScheme ? '0 0 50%' : '1 1 auto',
-              overflowY: 'auto',
-              overflowX: 'auto',
+              flex: 'none',
+              height: showMarkScheme ? '50vh' : '100vh',
               padding: '20px',
               boxSizing: 'border-box',
-              display: 'flex',
-              flexDirection: 'column'
+              overflowY: 'scroll'
             }}>
-              <div style={{
-                flex: '1 1 auto',
-                overflow: 'auto'
-              }}>
-                <img
-                  src={`/edexcel-gcse-maths-questions/${currentMatch.labelId}`}
-                  alt={currentMatch.labelId}
-                  style={{
-                    display: 'block',
-                    margin: '0 auto'
-                  }}
-                />
-              </div>
+              <img
+                src={`/edexcel-gcse-maths-questions/${currentMatch.labelId}`}
+                alt={currentMatch.labelId}
+                style={{
+                  width: '100%',
+                  height: 'auto',
+                  display: 'block'
+                }}
+              />
             </div>
             <button
               onClick={() => setShowMarkScheme((prev) => !prev)}
@@ -577,28 +571,23 @@ function App() {
             </button>
             {showMarkScheme && (
               <div style={{
-                flex: '0 0 50%',
-                overflowY: 'auto',
-                overflowX: 'auto',
+                flex: 'none',
+                height: '50vh',
                 padding: '20px',
                 boxSizing: 'border-box',
                 borderTop: '2px solid #ddd',
-                backgroundColor: '#ffffff'
+                backgroundColor: '#ffffff',
+                overflowY: 'scroll'
               }}>
-                <div style={{
-                  width: '100%',
-                  height: '100%',
-                  overflow: 'auto'
-                }}>
-                  <img
-                    src={`/edexcel-gcse-maths-answers/${currentMatch.labelId}`}
-                    alt={`${currentMatch.labelId} mark scheme`}
-                    style={{
-                      display: 'block',
-                      margin: '0 auto'
-                    }}
-                  />
-                </div>
+                <img
+                  src={`/edexcel-gcse-maths-answers/${currentMatch.labelId}`}
+                  alt={`${currentMatch.labelId} mark scheme`}
+                  style={{
+                    width: '100%',
+                    height: 'auto',
+                    display: 'block'
+                  }}
+                />
               </div>
             )}
           </>
