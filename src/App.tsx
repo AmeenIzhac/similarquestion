@@ -271,6 +271,8 @@ function App() {
     }
   };
 
+  const sidebarWidth = sidebarOpen ? 300 : 50;
+
   return (
     <div style={{ display: 'flex', minHeight: '100vh' }}>
       {/* Sidebar */}
@@ -537,8 +539,7 @@ function App() {
               padding: '20px',
               boxSizing: 'border-box',
               display: 'flex',
-              flexDirection: 'column',
-              gap: '16px'
+              flexDirection: 'column'
             }}>
               <div style={{
                 flex: '1 1 auto',
@@ -553,25 +554,27 @@ function App() {
                   }}
                 />
               </div>
-              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                <button
-                  onClick={() => setShowMarkScheme((prev) => !prev)}
-                  style={{
-                    padding: '10px 14px',
-                    backgroundColor: showMarkScheme ? '#dc3545' : '#007bff',
-                    color: '#fff',
-                    border: 'none',
-                    borderRadius: '6px',
-                    cursor: 'pointer',
-                    fontSize: '13px',
-                    fontWeight: 600,
-                    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.15)'
-                  }}
-                >
-                  {showMarkScheme ? 'Hide mark scheme' : 'View mark scheme'}
-                </button>
-              </div>
             </div>
+            <button
+              onClick={() => setShowMarkScheme((prev) => !prev)}
+              style={{
+                position: 'fixed',
+                bottom: '20px',
+                left: `${sidebarWidth + 20}px`,
+                padding: '10px 14px',
+                backgroundColor: showMarkScheme ? '#dc3545' : '#007bff',
+                color: '#fff',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontSize: '13px',
+                fontWeight: 600,
+                boxShadow: '0 2px 4px rgba(0, 0, 0, 0.15)',
+                zIndex: 10
+              }}
+            >
+              {showMarkScheme ? 'Hide mark scheme' : 'View mark scheme'}
+            </button>
             {showMarkScheme && (
               <div style={{
                 flex: '0 0 50%',
