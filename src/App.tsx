@@ -1,10 +1,11 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { Mistral } from '@mistralai/mistralai';
+import jsPDF from 'jspdf';
 
 
 
 // Function to search Pinecone using REST API
-const searchPinecone = async (query: string, topK: number = 10) => {
+const searchPinecone = async (query: string, topK: number = 10, levelFilter: 'all' | 'h' | 'f' = 'all') => {
   try {
     const pineconeApiKey = import.meta.env.VITE_PINECONE_API_KEY;
     const indexHost = import.meta.env.VITE_PINECONE_INDEX_HOST;
@@ -14,6 +15,8 @@ const searchPinecone = async (query: string, topK: number = 10) => {
       console.error('Pinecone API key or index host not configured');
       return null;
     }
+
+    const filter = levelFilter === 'all' ? undefined : { level: levelFilter };
 
     const response = await fetch(`https://${indexHost}/records/namespaces/${namespace}/search`, {
       method: 'POST',
@@ -26,7 +29,8 @@ const searchPinecone = async (query: string, topK: number = 10) => {
       body: JSON.stringify({
         query: {
           inputs: { text: query },
-          top_k: topK
+          top_k: topK,
+          filter: filter
         },
         fields: ["category", "chunk_text"]
       })
@@ -45,6 +49,26 @@ const searchPinecone = async (query: string, topK: number = 10) => {
   }
 };
 
+const formatLabelId = (labelId: string | undefined) => {
+  if (!labelId) return '';
+  const cleaned = labelId.replace(/\.png$/i, '');
+  const parts = cleaned.split('-');
+  if (parts.length < 5) return cleaned;
+  const [year, monthRaw, levelRaw, paperRaw, questionRaw] = parts;
+  const monthLower = monthRaw.toLowerCase();
+  const specialMonthMatch = monthLower.match(/^(specimen|sample)(\d+)$/);
+  const month = specialMonthMatch
+    ? `${specialMonthMatch[1].charAt(0).toUpperCase()}${specialMonthMatch[1].slice(1)} Set ${specialMonthMatch[2]}`
+    : monthRaw.charAt(0).toUpperCase() + monthRaw.slice(1);
+  const levelLower = levelRaw.toLowerCase();
+  const level = levelLower === 'h' ? 'Higher' : levelLower === 'f' ? 'Foundation' : levelRaw;
+  const paperNumber = paperRaw.replace(/[^0-9]/g, '') || paperRaw;
+  const paper = `Paper ${paperNumber}`;
+  const questionMatch = questionRaw.match(/q(\d+)/i);
+  const question = questionMatch ? `Question ${questionMatch[1]}` : questionRaw;
+  return `${year} ${month} ${level} • ${paper} • ${question}`;
+};
+
 function App() {
   const [imageUrl, setImageUrl] = useState<string>('');
   const [client, setClient] = useState<Mistral | null>(null);
@@ -57,6 +81,11 @@ function App() {
   const [emailError, setEmailError] = useState<string>('');
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(true);
   const [showMarkScheme, setShowMarkScheme] = useState<boolean>(false);
+  const [levelFilter, setLevelFilter] = useState<'all' | 'h' | 'f'>('all');
+  const [selectedQuestions, setSelectedQuestions] = useState<string[]>([]);
+  const [isSavingPdf, setIsSavingPdf] = useState<boolean>(false);
+  const [hoveredSelected, setHoveredSelected] = useState<string | null>(null);
+  const [pdfMode, setPdfMode] = useState<'questions' | 'answers' | 'interleaved'>('questions');
 
 
   useEffect(() => {
@@ -132,11 +161,10 @@ function App() {
         includeImageBase64: true
       });
       
-      console.log(ocrResponse);
       const extractedText = ocrResponse.pages?.[0]?.markdown || 'No text found';
       
       // Find similar questions using Pinecone with extracted text
-      const pineconeResults = await searchPinecone(extractedText);
+      const pineconeResults = await searchPinecone(extractedText, 10, levelFilter);
       
       if (pineconeResults && pineconeResults.result && pineconeResults.result.hits) {
         const matches = pineconeResults.result.hits.map((hit: any) => ({
@@ -167,7 +195,7 @@ function App() {
     } finally {
       setIsProcessing(false);
     }
-  }, [client]);
+  }, [client, levelFilter]);
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -225,13 +253,137 @@ function App() {
 
   const currentMatch = topMatches[currentMatchIndex];
 
+  const isCurrentSelected = useMemo(() => {
+    if (!currentMatch || currentMatch.labelId === 'error') return false;
+    return selectedQuestions.includes(currentMatch.labelId);
+  }, [currentMatch, selectedQuestions]);
+
+  const toggleCurrentQuestionSelection = useCallback(() => {
+    if (!currentMatch || currentMatch.labelId === 'error') return;
+    setSelectedQuestions((prev) => {
+      const exists = prev.includes(currentMatch.labelId);
+      if (exists) {
+        return prev.filter((item) => item !== currentMatch.labelId);
+      }
+      return [...prev, currentMatch.labelId];
+    });
+  }, [currentMatch]);
+
+  const removeSelectedQuestion = useCallback((labelId: string) => {
+    setSelectedQuestions((prev) => prev.filter((item) => item !== labelId));
+  }, []);
+
+  const handleDownloadSelected = useCallback(async () => {
+    if (selectedQuestions.length === 0 || isSavingPdf) {
+      return;
+    }
+
+    setIsSavingPdf(true);
+    try {
+      const pdf = new jsPDF({ unit: 'mm', format: 'a4' });
+
+      const margin = 10;
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const maxWidth = pageWidth - margin * 2;
+      const maxHeight = pageHeight - margin * 2;
+      let currentY = margin;
+      let atPageStart = true;
+
+      const renderItems = selectedQuestions.flatMap((labelId) => {
+        const questionPath = `/edexcel-gcse-maths-questions/${labelId}`;
+        const answerPath = `/edexcel-gcse-maths-answers/${labelId}`;
+
+        if (pdfMode === 'questions') {
+          return [{ labelId, path: questionPath, type: 'question' as const }];
+        }
+
+        if (pdfMode === 'answers') {
+          return [{ labelId, path: answerPath, type: 'answer' as const }];
+        }
+
+        return [
+          { labelId, path: questionPath, type: 'question' as const },
+          { labelId, path: answerPath, type: 'answer' as const }
+        ];
+      });
+
+      for (let index = 0; index < renderItems.length; index += 1) {
+        const { labelId, path, type } = renderItems[index];
+
+        if (type === 'question') {
+          if (!atPageStart) {
+            pdf.addPage();
+            currentY = margin;
+            atPageStart = true;
+          }
+        }
+
+        const response = await fetch(path);
+
+        if (!response.ok) {
+          throw new Error(`Failed to load ${type} image: ${labelId}`);
+        }
+
+        const blob = await response.blob();
+        const dataUrl = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+
+        const { width: imageWidth, height: imageHeight } = await new Promise<{ width: number; height: number }>((resolve, reject) => {
+          const img = new Image();
+          img.onload = () => resolve({ width: img.width, height: img.height });
+          img.onerror = reject;
+          img.src = dataUrl;
+        });
+
+        let renderWidth = maxWidth;
+        let renderHeight = (imageHeight * renderWidth) / imageWidth;
+
+        if (renderHeight > maxHeight) {
+          renderHeight = maxHeight;
+          renderWidth = (imageWidth * renderHeight) / imageHeight;
+        }
+
+        if (currentY + renderHeight > pageHeight - margin) {
+          pdf.addPage();
+          currentY = margin;
+        }
+
+        const x = (pageWidth - renderWidth) / 2;
+        const imageType = labelId.toLowerCase().endsWith('.jpg') || labelId.toLowerCase().endsWith('.jpeg') ? 'JPEG' : 'PNG';
+
+        pdf.addImage(dataUrl, imageType as 'PNG' | 'JPEG', x, currentY, renderWidth, renderHeight);
+        atPageStart = false;
+
+        currentY += renderHeight + 5;
+
+        if (index < renderItems.length - 1 && currentY > pageHeight - margin) {
+          pdf.addPage();
+          currentY = margin;
+          atPageStart = true;
+        }
+      }
+
+      const fileSuffix = pdfMode === 'questions' ? 'questions' : pdfMode === 'answers' ? 'answers' : 'interleaved';
+      pdf.save(`selected-${fileSuffix}.pdf`);
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+    } finally {
+      setIsSavingPdf(false);
+    }
+  }, [isSavingPdf, selectedQuestions, pdfMode]);
+
   const searchByText = useCallback(async (text: string) => {
     if (!text.trim()) return;
     
     setIsProcessing(true);
     try {
       // Try Pinecone first
-      const pineconeResults = await searchPinecone(text);
+      const pineconeResults = await searchPinecone(text, 10, levelFilter);
       
       if (pineconeResults && pineconeResults.result && pineconeResults.result.hits) {
         const matches = pineconeResults.result.hits.map((hit: any) => ({
@@ -262,7 +414,7 @@ function App() {
     } finally {
       setIsProcessing(false);
     }
-  }, []);
+  }, [levelFilter]);
 
   const handleTextSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -362,6 +514,24 @@ function App() {
             {/* Text search section */}
             <div style={{ marginBottom: '20px' }}>
               <h3 style={{ margin: '0 0 10px 0', fontSize: '14px', color: '#333' }}>Or Search by Text:</h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '10px' }}>
+                <label style={{ fontSize: '12px', color: '#333', fontWeight: 'bold' }}>Filter by level:</label>
+                <select
+                  value={levelFilter}
+                  onChange={(e) => setLevelFilter(e.target.value as 'all' | 'h' | 'f')}
+                  style={{
+                    padding: '6px 8px',
+                    border: '2px solid #333',
+                    borderRadius: '4px',
+                    fontSize: '12px',
+                    boxSizing: 'border-box'
+                  }}
+                >
+                  <option value="all">All levels</option>
+                  <option value="h">Higher (H)</option>
+                  <option value="f">Foundation (F)</option>
+                </select>
+              </div>
               <form onSubmit={handleTextSearch} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 <textarea
                   value={searchText}
@@ -395,48 +565,139 @@ function App() {
                   {isProcessing ? 'Searching...' : 'Search'}
                 </button>
               </form>
-              
-              {/* Navigation controls */}
               {topMatches.length > 0 && (
-                <div style={{ 
-                  marginTop: '10px',
+                <div style={{
+                  marginTop: '12px',
                   display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
                   gap: '10px'
                 }}>
-                  <div style={{ display: 'flex', gap: '10px' }}>
-                    <button 
-                      onClick={prevMatch}
-                      style={{
-                        padding: '8px 12px',
-                        backgroundColor: '#007bff',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '4px',
-                        cursor: 'pointer',
-                        fontSize: '12px'
-                      }}
-                    >
-                      Previous
-                    </button>
-                    <button 
-                      onClick={nextMatch}
-                      style={{
-                        padding: '8px 12px',
-                        backgroundColor: '#28a745',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '4px',
-                        cursor: 'pointer',
-                        fontSize: '12px'
-                      }}
-                    >
-                      Next
-                    </button>
-                  </div>
+                  <button
+                    onClick={prevMatch}
+                    style={{
+                      flex: 1,
+                      padding: '8px 12px',
+                      backgroundColor: '#007bff',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '4px',
+                      cursor: 'pointer',
+                      fontSize: '12px'
+                    }}
+                  >
+                    Previous
+                  </button>
+                  <button
+                    onClick={nextMatch}
+                    style={{
+                      flex: 1,
+                      padding: '8px 12px',
+                      backgroundColor: '#28a745',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '4px',
+                      cursor: 'pointer',
+                      fontSize: '12px'
+                    }}
+                  >
+                    Next
+                  </button>
                 </div>
               )}
+              <div style={{
+                marginTop: '15px',
+                padding: '12px',
+                border: '2px solid #333',
+                borderRadius: '6px',
+                backgroundColor: '#fff',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '10px'
+              }}>
+                <h4 style={{ margin: 0, fontSize: '13px', color: '#333', fontWeight: 'bold' }}>Selected questions</h4>
+                {selectedQuestions.length === 0 ? (
+                  <p style={{ margin: 0, fontSize: '12px', color: '#666' }}>No questions selected yet.</p>
+                ) : (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
+                    {selectedQuestions.map((labelId) => (
+                      <div
+                        key={labelId}
+                        style={{ position: 'relative', width: '70px', height: '70px' }}
+                        onMouseEnter={() => setHoveredSelected(labelId)}
+                        onMouseLeave={() => setHoveredSelected(null)}
+                      >
+                        <img
+                          src={`/edexcel-gcse-maths-questions/${labelId}`}
+                          alt={labelId}
+                          style={{
+                            width: '100%',
+                            height: '100%',
+                            objectFit: 'cover',
+                            borderRadius: '6px',
+                            border: '1px solid #ccc'
+                          }}
+                        />
+                        <button
+                          onClick={() => removeSelectedQuestion(labelId)}
+                          style={{
+                            position: 'absolute',
+                            top: '4px',
+                            right: '4px',
+                            width: '24px',
+                            height: '24px',
+                            borderRadius: '50%',
+                            border: 'none',
+                            backgroundColor: 'rgba(0, 0, 0, 0.7)',
+                            color: '#fff',
+                            fontSize: '14px',
+                            fontWeight: 700,
+                            display: hoveredSelected === labelId ? 'flex' : 'none',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'pointer'
+                          }}
+                          aria-label={`Remove ${formatLabelId(labelId)}`}
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <label style={{ fontSize: '12px', color: '#333', fontWeight: 600 }}>PDF content:</label>
+                  <select
+                    value={pdfMode}
+                    onChange={(e) => setPdfMode(e.target.value as 'questions' | 'answers' | 'interleaved')}
+                    style={{
+                      padding: '6px 8px',
+                      border: '2px solid #333',
+                      borderRadius: '4px',
+                      fontSize: '12px',
+                      boxSizing: 'border-box'
+                    }}
+                  >
+                    <option value="questions">Questions only</option>
+                    <option value="answers">Answers only</option>
+                    <option value="interleaved">Questions & Answers (interleaved)</option>
+                  </select>
+                </div>
+                <button
+                  onClick={handleDownloadSelected}
+                  disabled={selectedQuestions.length === 0 || isSavingPdf}
+                  style={{
+                    padding: '8px 12px',
+                    backgroundColor: selectedQuestions.length === 0 || isSavingPdf ? '#ccc' : '#007bff',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: selectedQuestions.length === 0 || isSavingPdf ? 'not-allowed' : 'pointer',
+                    fontSize: '12px',
+                    fontWeight: 'bold'
+                  }}
+                >
+                  {isSavingPdf ? 'Saving...' : 'Download PDF'}
+                </button>
+              </div>
             </div>
 
             {/* Email Signup Form */}
@@ -532,6 +793,40 @@ function App() {
       }}>
         {currentMatch && !isProcessing && currentMatch.labelId !== 'error' && (
           <>
+            <div style={{
+              flex: 'none',
+              padding: '8px 16px',
+              borderBottom: '2px solid #ddd',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              backgroundColor: '#f5f5f5',
+              boxSizing: 'border-box'
+            }}>
+              <span style={{ fontSize: '13px', fontWeight: 600, color: '#333', flex: 1, marginRight: '10px' }}>
+                {formatLabelId(currentMatch.labelId)}
+              </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <span style={{ fontSize: '11px', color: '#555' }}>
+                  Match {currentMatchIndex + 1} of {topMatches.length}
+                </span>
+                <button
+                  onClick={toggleCurrentQuestionSelection}
+                  style={{
+                    padding: '6px 10px',
+                    backgroundColor: isCurrentSelected ? '#dc3545' : '#28a745',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    fontSize: '11px',
+                    fontWeight: 'bold'
+                  }}
+                >
+                  {isCurrentSelected ? 'Remove from list' : 'Add to list'}
+                </button>
+              </div>
+            </div>
             <div style={{
               flex: 'none',
               height: showMarkScheme ? '50vh' : '100vh',
