@@ -700,7 +700,7 @@ function App() {
               </div>
             </div>
 
-            {/* Email Signup Form */}
+            Email Signup Form
             <div style={{ 
               backgroundColor: '#fff',
               padding: '15px',
@@ -717,12 +717,12 @@ function App() {
                     fontWeight: 'bold',
                     textAlign: 'center'
                   }}>
-                    Enter email for access to Premium Version! 🔥
+                    Like the product? We'd love to get in touch. Drop your email below!
                   </p>
                   
                   {/* Premium Features List */}
                   <div style={{ fontSize: '12px', color: '#666', lineHeight: '1.4' }}>
-                    <div>• Mark scheme answers</div>
+                    <div>• Example Solutions</div>
                     <div>• More GCSE subjects</div>
                     <div>• AI tutor</div>
                   </div>
