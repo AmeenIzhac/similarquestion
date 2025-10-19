@@ -717,7 +717,7 @@ function App() {
                     fontWeight: 'bold',
                     textAlign: 'center'
                   }}>
-                    Like the product? We'd love to get in touch. Drop your email below!
+                    Like the product? Drop your email below for more! 🔥
                   </p>
                   
                   {/* Premium Features List */}
