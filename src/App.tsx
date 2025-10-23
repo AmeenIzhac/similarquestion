@@ -5,7 +5,12 @@ import jsPDF from 'jspdf';
 
 
 // Function to search Pinecone using REST API
-const searchPinecone = async (query: string, topK: number = 10, levelFilter: 'all' | 'h' | 'f' = 'all') => {
+const searchPinecone = async (
+  query: string, 
+  topK: number = 10, 
+  levelFilter: 'all' | 'h' | 'f' = 'all',
+  calculatorFilter: 'all' | 'calculator' | 'non-calculator' = 'all'
+) => {
   try {
     const pineconeApiKey = import.meta.env.VITE_PINECONE_API_KEY;
     const indexHost = import.meta.env.VITE_PINECONE_INDEX_HOST;
@@ -16,7 +21,21 @@ const searchPinecone = async (query: string, topK: number = 10, levelFilter: 'al
       return null;
     }
 
-    const filter = levelFilter === 'all' ? undefined : { level: levelFilter };
+    // Build filter object
+    let filter: any = {};
+    
+    if (levelFilter !== 'all') {
+      filter.level = levelFilter;
+    }
+    
+    if (calculatorFilter === 'calculator') {
+      filter.paper_number = { $in: ['2', '3'] };
+    } else if (calculatorFilter === 'non-calculator') {
+      filter.paper_number = '1';
+    }
+    
+    // If no filters applied, set to undefined
+    const finalFilter = Object.keys(filter).length === 0 ? undefined : filter;
 
     const response = await fetch(`https://${indexHost}/records/namespaces/${namespace}/search`, {
       method: 'POST',
@@ -30,7 +49,7 @@ const searchPinecone = async (query: string, topK: number = 10, levelFilter: 'al
         query: {
           inputs: { text: query },
           top_k: topK,
-          filter: filter
+          filter: finalFilter
         },
         fields: ["category", "chunk_text"]
       })
@@ -82,10 +101,13 @@ function App() {
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(true);
   const [showMarkScheme, setShowMarkScheme] = useState<boolean>(false);
   const [levelFilter, setLevelFilter] = useState<'all' | 'h' | 'f'>('all');
+  const [calculatorFilter, setCalculatorFilter] = useState<'all' | 'calculator' | 'non-calculator'>('all');
   const [selectedQuestions, setSelectedQuestions] = useState<string[]>([]);
   const [isSavingPdf, setIsSavingPdf] = useState<boolean>(false);
   const [hoveredSelected, setHoveredSelected] = useState<string | null>(null);
   const [pdfMode, setPdfMode] = useState<'questions' | 'answers' | 'interleaved'>('questions');
+  const [showWorksheet, setShowWorksheet] = useState<boolean>(false);
+  const [showFilterPopup, setShowFilterPopup] = useState<boolean>(false);
 
 
   useEffect(() => {
@@ -164,7 +186,7 @@ function App() {
       const extractedText = ocrResponse.pages?.[0]?.markdown || 'No text found';
       
       // Find similar questions using Pinecone with extracted text
-      const pineconeResults = await searchPinecone(extractedText, 10, levelFilter);
+      const pineconeResults = await searchPinecone(extractedText, 10, levelFilter, calculatorFilter);
       
       if (pineconeResults && pineconeResults.result && pineconeResults.result.hits) {
         const matches = pineconeResults.result.hits.map((hit: any) => ({
@@ -195,7 +217,7 @@ function App() {
     } finally {
       setIsProcessing(false);
     }
-  }, [client, levelFilter]);
+  }, [client, levelFilter, calculatorFilter]);
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -383,7 +405,7 @@ function App() {
     setIsProcessing(true);
     try {
       // Try Pinecone first
-      const pineconeResults = await searchPinecone(text, 10, levelFilter);
+      const pineconeResults = await searchPinecone(text, 10, levelFilter, calculatorFilter);
       
       if (pineconeResults && pineconeResults.result && pineconeResults.result.hits) {
         const matches = pineconeResults.result.hits.map((hit: any) => ({
@@ -414,7 +436,7 @@ function App() {
     } finally {
       setIsProcessing(false);
     }
-  }, [levelFilter]);
+  }, [levelFilter, calculatorFilter]);
 
   const handleTextSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -514,23 +536,134 @@ function App() {
             {/* Text search section */}
             <div style={{ marginBottom: '20px' }}>
               <h3 style={{ margin: '0 0 10px 0', fontSize: '14px', color: '#333' }}>Or Search by Text:</h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '10px' }}>
-                <label style={{ fontSize: '12px', color: '#333', fontWeight: 'bold' }}>Filter by level:</label>
-                <select
-                  value={levelFilter}
-                  onChange={(e) => setLevelFilter(e.target.value as 'all' | 'h' | 'f')}
+              
+              {/* Filter Button */}
+              <div style={{ position: 'relative', marginBottom: '10px' }}>
+                <button
+                  type="button"
+                  onClick={() => setShowFilterPopup(!showFilterPopup)}
                   style={{
-                    padding: '6px 8px',
+                    width: '100%',
+                    padding: '8px 12px',
+                    backgroundColor: (levelFilter !== 'all' || calculatorFilter !== 'all') ? '#1890ff' : '#f0f0f0',
+                    color: (levelFilter !== 'all' || calculatorFilter !== 'all') ? 'white' : '#333',
                     border: '2px solid #333',
                     borderRadius: '4px',
+                    cursor: 'pointer',
                     fontSize: '12px',
-                    boxSizing: 'border-box'
+                    fontWeight: 'bold',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between'
                   }}
                 >
-                  <option value="all">All levels</option>
-                  <option value="h">Higher (H)</option>
-                  <option value="f">Foundation (F)</option>
-                </select>
+                  <span>
+                    {(levelFilter !== 'all' || calculatorFilter !== 'all') 
+                      ? `Filters: ${levelFilter !== 'all' ? (levelFilter === 'h' ? 'Higher' : 'Foundation') : ''}${levelFilter !== 'all' && calculatorFilter !== 'all' ? ', ' : ''}${calculatorFilter !== 'all' ? (calculatorFilter === 'calculator' ? 'Calculator' : 'Non-Calculator') : ''}`
+                      : 'Filters'}
+                  </span>
+                  <span style={{ fontSize: '10px' }}>{showFilterPopup ? '▲' : '▼'}</span>
+                </button>
+                
+                {/* Filter Popup */}
+                {showFilterPopup && (
+                  <div style={{
+                    position: 'absolute',
+                    top: '100%',
+                    left: 0,
+                    right: 0,
+                    marginTop: '4px',
+                    backgroundColor: 'white',
+                    border: '2px solid #333',
+                    borderRadius: '4px',
+                    padding: '12px',
+                    zIndex: 1000,
+                    boxShadow: '0 4px 8px rgba(0,0,0,0.1)'
+                  }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      {/* Level Filter */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        <label style={{ fontSize: '12px', color: '#333', fontWeight: 'bold' }}>Level:</label>
+                        <select
+                          value={levelFilter}
+                          onChange={(e) => setLevelFilter(e.target.value as 'all' | 'h' | 'f')}
+                          style={{
+                            padding: '6px 8px',
+                            border: '2px solid #333',
+                            borderRadius: '4px',
+                            fontSize: '12px',
+                            boxSizing: 'border-box'
+                          }}
+                        >
+                          <option value="all">All levels</option>
+                          <option value="h">Higher (H)</option>
+                          <option value="f">Foundation (F)</option>
+                        </select>
+                      </div>
+                      
+                      {/* Calculator Filter */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        <label style={{ fontSize: '12px', color: '#333', fontWeight: 'bold' }}>Calculator:</label>
+                        <select
+                          value={calculatorFilter}
+                          onChange={(e) => setCalculatorFilter(e.target.value as 'all' | 'calculator' | 'non-calculator')}
+                          style={{
+                            padding: '6px 8px',
+                            border: '2px solid #333',
+                            borderRadius: '4px',
+                            fontSize: '12px',
+                            boxSizing: 'border-box'
+                          }}
+                        >
+                          <option value="all">All papers</option>
+                          <option value="non-calculator">Non-Calculator (Paper 1)</option>
+                          <option value="calculator">Calculator (Papers 2 & 3)</option>
+                        </select>
+                      </div>
+                      
+                      {/* Action Buttons */}
+                      <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setLevelFilter('all');
+                            setCalculatorFilter('all');
+                          }}
+                          style={{
+                            flex: 1,
+                            padding: '6px 12px',
+                            backgroundColor: '#f0f0f0',
+                            color: '#333',
+                            border: '1px solid #d9d9d9',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                            fontSize: '11px',
+                            fontWeight: 'bold'
+                          }}
+                        >
+                          Clear All
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setShowFilterPopup(false)}
+                          style={{
+                            flex: 1,
+                            padding: '6px 12px',
+                            backgroundColor: '#1890ff',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                            fontSize: '11px',
+                            fontWeight: 'bold'
+                          }}
+                        >
+                          Apply
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
               <form onSubmit={handleTextSearch} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 <textarea
@@ -591,7 +724,7 @@ function App() {
                     style={{
                       flex: 1,
                       padding: '8px 12px',
-                      backgroundColor: '#28a745',
+                      backgroundColor: '#007bff',
                       color: 'white',
                       border: 'none',
                       borderRadius: '4px',
@@ -603,104 +736,237 @@ function App() {
                   </button>
                 </div>
               )}
-              <div style={{
-                marginTop: '15px',
-                padding: '12px',
-                border: '2px solid #333',
-                borderRadius: '6px',
-                backgroundColor: '#fff',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '10px'
-              }}>
-                <h4 style={{ margin: 0, fontSize: '13px', color: '#333', fontWeight: 'bold' }}>Selected questions</h4>
-                {selectedQuestions.length === 0 ? (
-                  <p style={{ margin: 0, fontSize: '12px', color: '#666' }}>No questions selected yet.</p>
-                ) : (
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
-                    {selectedQuestions.map((labelId) => (
-                      <div
-                        key={labelId}
-                        style={{ position: 'relative', width: '70px', height: '70px' }}
-                        onMouseEnter={() => setHoveredSelected(labelId)}
-                        onMouseLeave={() => setHoveredSelected(null)}
-                      >
-                        <img
-                          src={`/edexcel-gcse-maths-questions/${labelId}`}
-                          alt={labelId}
-                          style={{
-                            width: '100%',
-                            height: '100%',
-                            objectFit: 'cover',
-                            borderRadius: '6px',
-                            border: '1px solid #ccc'
-                          }}
-                        />
-                        <button
-                          onClick={() => removeSelectedQuestion(labelId)}
-                          style={{
-                            position: 'absolute',
-                            top: '4px',
-                            right: '4px',
-                            width: '24px',
-                            height: '24px',
-                            borderRadius: '50%',
-                            border: 'none',
-                            backgroundColor: 'rgba(0, 0, 0, 0.7)',
-                            color: '#fff',
-                            fontSize: '14px',
-                            fontWeight: 700,
-                            display: hoveredSelected === labelId ? 'flex' : 'none',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            cursor: 'pointer'
-                          }}
-                          aria-label={`Remove ${formatLabelId(labelId)}`}
-                        >
-                          ×
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <label style={{ fontSize: '12px', color: '#333', fontWeight: 600 }}>PDF content:</label>
-                  <select
-                    value={pdfMode}
-                    onChange={(e) => setPdfMode(e.target.value as 'questions' | 'answers' | 'interleaved')}
-                    style={{
-                      padding: '6px 8px',
-                      border: '2px solid #333',
-                      borderRadius: '4px',
-                      fontSize: '12px',
-                      boxSizing: 'border-box'
-                    }}
-                  >
-                    <option value="questions">Questions only</option>
-                    <option value="answers">Answers only</option>
-                    <option value="interleaved">Questions & Answers (interleaved)</option>
-                  </select>
-                </div>
+              {!showWorksheet ? (
                 <button
-                  onClick={handleDownloadSelected}
-                  disabled={selectedQuestions.length === 0 || isSavingPdf}
+                  onClick={() => setShowWorksheet(true)}
                   style={{
-                    padding: '8px 12px',
-                    backgroundColor: selectedQuestions.length === 0 || isSavingPdf ? '#ccc' : '#007bff',
-                    color: '#fff',
+                    width: '100%',
+                    padding: '10px 16px',
+                    backgroundColor: '#1890ff',
+                    color: 'white',
                     border: 'none',
                     borderRadius: '4px',
-                    cursor: selectedQuestions.length === 0 || isSavingPdf ? 'not-allowed' : 'pointer',
-                    fontSize: '12px',
-                    fontWeight: 'bold'
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    fontWeight: 600,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px',
+                    marginTop: '15px'
                   }}
                 >
-                  {isSavingPdf ? 'Saving...' : 'Download PDF'}
+                  Make Worksheet
                 </button>
-              </div>
+              ) : (
+                <div style={{
+                  marginTop: '15px',
+                  padding: '12px',
+                  border: '2px solid #333',
+                  borderRadius: '6px',
+                  backgroundColor: '#fff',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '10px'
+                }}>
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                      <h4 style={{ margin: 0, fontSize: '13px', color: '#333', fontWeight: 'bold' }}>Worksheet</h4>
+                      <div style={{ position: 'relative', display: 'inline-block' }}>
+                        <div style={{ position: 'relative', display: 'inline-block' }}>
+                          <button
+                            onClick={() => {
+                              const dropdown = document.getElementById('downloadDropdown');
+                              if (dropdown) {
+                                dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
+                              }
+                            }}
+                            disabled={selectedQuestions.length === 0 || isSavingPdf}
+                            style={{
+                              backgroundColor: selectedQuestions.length === 0 || isSavingPdf ? '#ccc' : '#1890ff',
+                              color: 'white',
+                              border: 'none',
+                              padding: '6px 12px',
+                              borderRadius: '4px',
+                              cursor: selectedQuestions.length === 0 || isSavingPdf ? 'not-allowed' : 'pointer',
+                              fontSize: '12px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              minWidth: '120px',
+                              justifyContent: 'space-between'
+                            }}
+                          >
+                            {isSavingPdf ? 'Saving...' : `Download ${pdfMode === 'questions' ? 'Questions' : pdfMode === 'answers' ? 'Answers' : 'Q&A'}`}
+                            <span style={{ fontSize: '10px', marginLeft: '4px' }}>▼</span>
+                          </button>
+                        <div 
+                          style={{
+                            position: 'absolute',
+                            right: 0,
+                            backgroundColor: 'white',
+                            borderRadius: '4px',
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                            zIndex: 10,
+                            marginTop: '4px',
+                            minWidth: '160px',
+                            display: 'none',
+                            border: '1px solid #f0f0f0'
+                          }} 
+                          id="downloadDropdown"
+                        >
+                          {[
+                            { mode: 'questions', label: 'Questions Only' },
+                            { mode: 'answers', label: 'Answers Only' },
+                            { mode: 'interleaved', label: 'Questions & Answers' }
+                          ].map(({ mode, label }) => (
+                            <div 
+                              key={mode}
+                              style={{
+                                padding: '8px 16px',
+                                cursor: 'pointer',
+                                fontSize: '13px',
+                                color: pdfMode === mode ? '#1890ff' : '#333',
+                                backgroundColor: pdfMode === mode ? '#e6f7ff' : 'transparent',
+                                transition: 'all 0.2s',
+                                borderBottom: '1px solid #f5f5f5',
+                                ...(mode === 'interleaved' && {
+                                  borderBottom: 'none',
+                                  borderBottomLeftRadius: '4px',
+                                  borderBottomRightRadius: '4px'
+                                }),
+                                ...(mode === 'questions' && {
+                                  borderTopLeftRadius: '4px',
+                                  borderTopRightRadius: '4px'
+                                })
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.backgroundColor = '#f5f5f5';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.backgroundColor = pdfMode === mode ? '#e6f7ff' : 'transparent';
+                              }}
+                              onClick={() => {
+                                setPdfMode(mode as 'questions' | 'answers' | 'interleaved');
+                                document.getElementById('downloadDropdown')!.style.display = 'none';
+                                handleDownloadSelected();
+                              }}
+                            >
+                              {label}
+                            </div>
+                          ))}
+                        </div>
+                        </div>
+                        <script dangerouslySetInnerHTML={{
+                          __html: `
+                            document.addEventListener('click', function(event) {
+                              const dropdown = document.getElementById('downloadDropdown');
+                              const button = event.target.closest('button');
+                              if (button && button.textContent.includes('Download')) {
+                                event.stopPropagation();
+                                dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
+                              } else if (!event.target.closest('#downloadDropdown')) {
+                                dropdown.style.display = 'none';
+                              }
+                            });
+                          `
+                        }} />
+                      </div>
+                    </div>
+                    
+                    <div style={{
+                      backgroundColor: 'white',
+                      borderRadius: '4px',
+                      border: '1px dashed #d9d9d9',
+                      padding: '16px',
+                      textAlign: 'center',
+                      marginBottom: '10px',
+                      minHeight: '100px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'center'
+                    }}>
+                      {selectedQuestions.length > 0 ? (
+                        <div style={{
+                          display: 'flex',
+                          flexWrap: 'wrap',
+                          gap: '10px',
+                          justifyContent: 'center',
+                          maxHeight: '200px',
+                          overflowY: 'auto',
+                          padding: '5px'
+                        }}>
+                          {selectedQuestions.map((labelId) => (
+                            <div
+                              key={labelId}
+                              style={{
+                                position: 'relative',
+                                width: '60px',
+                                height: '60px',
+                                borderRadius: '4px',
+                                overflow: 'hidden',
+                                border: '1px solid #e8e8e8',
+                                backgroundColor: '#fafafa'
+                              }}
+                              onMouseEnter={() => setHoveredSelected(labelId)}
+                              onMouseLeave={() => setHoveredSelected(null)}
+                            >
+                              <img
+                                src={`/edexcel-gcse-maths-questions/${labelId}`}
+                                alt={labelId}
+                                style={{
+                                  width: '100%',
+                                  height: '100%',
+                                  objectFit: 'cover',
+                                  opacity: hoveredSelected === labelId ? 0.7 : 1,
+                                  transition: 'opacity 0.2s'
+                                }}
+                              />
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  removeSelectedQuestion(labelId);
+                                }}
+                                style={{
+                                  position: 'absolute',
+                                  top: '2px',
+                                  right: '2px',
+                                  width: '18px',
+                                  height: '18px',
+                                  borderRadius: '50%',
+                                  border: 'none',
+                                  backgroundColor: 'rgba(255, 77, 79, 0.9)',
+                                  color: '#fff',
+                                  fontSize: '12px',
+                                  fontWeight: 'bold',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  cursor: 'pointer',
+                                  padding: 0,
+                                  opacity: hoveredSelected === labelId ? 1 : 0,
+                                  transition: 'opacity 0.2s',
+                                  lineHeight: 1
+                                }}
+                                aria-label={`Remove ${formatLabelId(labelId)}`}
+                              >
+                                ×
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p style={{ margin: 0, fontSize: '13px', color: '#8c8c8c' }}>
+                          Once you select questions for the worksheet they'll appear here
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
-            Email Signup Form
+            {/* Email Signup Form */}
             <div style={{ 
               backgroundColor: '#fff',
               padding: '15px',
