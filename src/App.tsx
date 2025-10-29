@@ -108,6 +108,9 @@ function App() {
   const [pdfMode, setPdfMode] = useState<'questions' | 'answers' | 'interleaved'>('questions');
   const [showWorksheet, setShowWorksheet] = useState<boolean>(false);
   const [showFilterPopup, setShowFilterPopup] = useState<boolean>(false);
+  const [numMatches, setNumMatches] = useState<number>(10);
+  const [hasStarted, setHasStarted] = useState<boolean>(false);
+  const [showCenterFilter, setShowCenterFilter] = useState<boolean>(false);
 
 
   useEffect(() => {
@@ -186,7 +189,7 @@ function App() {
       const extractedText = ocrResponse.pages?.[0]?.markdown || 'No text found';
       
       // Find similar questions using Pinecone with extracted text
-      const pineconeResults = await searchPinecone(extractedText, 10, levelFilter, calculatorFilter);
+      const pineconeResults = await searchPinecone(extractedText, numMatches, levelFilter, calculatorFilter);
       
       if (pineconeResults && pineconeResults.result && pineconeResults.result.hits) {
         const matches = pineconeResults.result.hits.map((hit: any) => ({
@@ -217,7 +220,7 @@ function App() {
     } finally {
       setIsProcessing(false);
     }
-  }, [client, levelFilter, calculatorFilter]);
+  }, [client, levelFilter, calculatorFilter, numMatches]);
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -225,6 +228,7 @@ function App() {
       console.log('File selected:', file.name);
       const url = URL.createObjectURL(file);
       setImageUrl(url);
+      setHasStarted(true);
       
       // Process the image with OCR
       await processImageWithOCR(file);
@@ -241,6 +245,7 @@ function App() {
             console.log('Image pasted:', file.name);
             const url = URL.createObjectURL(file);
             setImageUrl(url);
+            setHasStarted(true);
             
             // Clear text search when image is pasted
             setSearchText('');
@@ -254,12 +259,13 @@ function App() {
     }
   }, [processImageWithOCR]);
 
-  useEffect(() => {
-    document.addEventListener('paste', handlePaste);
-    return () => {
-      document.removeEventListener('paste', handlePaste);
-    };
-  }, [handlePaste]);
+  // Image paste listener DISABLED
+  // useEffect(() => {
+  //   document.addEventListener('paste', handlePaste);
+  //   return () => {
+  //     document.removeEventListener('paste', handlePaste);
+  //   };
+  // }, [handlePaste]);
 
   const nextMatch = () => {
     if (topMatches.length > 0) {
@@ -284,12 +290,15 @@ function App() {
     if (!currentMatch || currentMatch.labelId === 'error') return;
     setSelectedQuestions((prev) => {
       const exists = prev.includes(currentMatch.labelId);
-      if (exists) {
-        return prev.filter((item) => item !== currentMatch.labelId);
+      const next = exists
+        ? prev.filter((item) => item !== currentMatch.labelId)
+        : [...prev, currentMatch.labelId];
+      if (!exists && !showWorksheet) {
+        setShowWorksheet(true);
       }
-      return [...prev, currentMatch.labelId];
+      return next;
     });
-  }, [currentMatch]);
+  }, [currentMatch, showWorksheet]);
 
   const removeSelectedQuestion = useCallback((labelId: string) => {
     setSelectedQuestions((prev) => prev.filter((item) => item !== labelId));
@@ -405,7 +414,7 @@ function App() {
     setIsProcessing(true);
     try {
       // Try Pinecone first
-      const pineconeResults = await searchPinecone(text, 10, levelFilter, calculatorFilter);
+      const pineconeResults = await searchPinecone(text, numMatches, levelFilter, calculatorFilter);
       
       if (pineconeResults && pineconeResults.result && pineconeResults.result.hits) {
         const matches = pineconeResults.result.hits.map((hit: any) => ({
@@ -436,11 +445,12 @@ function App() {
     } finally {
       setIsProcessing(false);
     }
-  }, [levelFilter, calculatorFilter]);
+  }, [levelFilter, calculatorFilter, numMatches]);
 
   const handleTextSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchText.trim()) {
+      setHasStarted(true);
       searchByText(searchText);
     }
   };
@@ -448,13 +458,13 @@ function App() {
   const sidebarWidth = sidebarOpen ? 300 : 50;
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh' }}>
+    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', backgroundColor: '#f7f7f8' }}>
       {/* Sidebar */}
       <div style={{
         width: sidebarOpen ? '300px' : '50px',
         minHeight: '100vh',
-        backgroundColor: '#f8f9fa',
-        borderRight: '2px solid #ccc',
+        backgroundColor: '#ffffff',
+        borderRight: '1px solid #e5e5e5',
         display: 'flex',
         flexDirection: 'column',
         transition: 'width 0.3s ease',
@@ -466,19 +476,12 @@ function App() {
           alignItems: 'center',
           justifyContent: 'space-between',
           padding: '10px 15px',
-          borderBottom: '1px solid #ddd'
+          borderBottom: 'none'
         }}>
           {sidebarOpen && (
-            <h1 style={{ 
-              margin: 0,
-              fontSize: '18px',
-              fontWeight: 'bold',
-              color: '#333',
-              flex: 1,
-              textAlign: 'center'
-            }}>
-              Find Similar GCSE Maths Questions
-            </h1>
+            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'flex-start' }}>
+              <span style={{ fontWeight: 700, color: '#666', fontSize: '20px' }}>SQ</span>
+            </div>
           )}
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
@@ -508,7 +511,7 @@ function App() {
         {sidebarOpen && (
           <div style={{ padding: '15px', overflowY: 'auto' }}>
 
-            {/* Image upload section */}
+            {/* Image upload section DISABLED
             <div style={{ marginBottom: '20px' }}>
               <h3 style={{ margin: '0 0 10px 0', fontSize: '14px', color: '#333' }}>Upload Image:</h3>
               {imageUrl && (
@@ -532,219 +535,20 @@ function App() {
                 Or paste an image with Ctrl+V
               </p>
             </div>
+            */}
 
-            {/* Text search section */}
+            {/* Text search section removed from sidebar */}
             <div style={{ marginBottom: '20px' }}>
-              <h3 style={{ margin: '0 0 10px 0', fontSize: '14px', color: '#333' }}>Or Search by Text:</h3>
-              
-              {/* Filter Button */}
-              <div style={{ position: 'relative', marginBottom: '10px' }}>
-                <button
-                  type="button"
-                  onClick={() => setShowFilterPopup(!showFilterPopup)}
-                  style={{
-                    width: '100%',
-                    padding: '8px 12px',
-                    backgroundColor: (levelFilter !== 'all' || calculatorFilter !== 'all') ? '#1890ff' : '#f0f0f0',
-                    color: (levelFilter !== 'all' || calculatorFilter !== 'all') ? 'white' : '#333',
-                    border: '2px solid #333',
-                    borderRadius: '4px',
-                    cursor: 'pointer',
-                    fontSize: '12px',
-                    fontWeight: 'bold',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between'
-                  }}
-                >
-                  <span>
-                    {(levelFilter !== 'all' || calculatorFilter !== 'all') 
-                      ? `Filters: ${levelFilter !== 'all' ? (levelFilter === 'h' ? 'Higher' : 'Foundation') : ''}${levelFilter !== 'all' && calculatorFilter !== 'all' ? ', ' : ''}${calculatorFilter !== 'all' ? (calculatorFilter === 'calculator' ? 'Calculator' : 'Non-Calculator') : ''}`
-                      : 'Filters'}
-                  </span>
-                  <span style={{ fontSize: '10px' }}>{showFilterPopup ? '▲' : '▼'}</span>
-                </button>
-                
-                {/* Filter Popup */}
-                {showFilterPopup && (
-                  <div style={{
-                    position: 'absolute',
-                    top: '100%',
-                    left: 0,
-                    right: 0,
-                    marginTop: '4px',
-                    backgroundColor: 'white',
-                    border: '2px solid #333',
-                    borderRadius: '4px',
-                    padding: '12px',
-                    zIndex: 1000,
-                    boxShadow: '0 4px 8px rgba(0,0,0,0.1)'
-                  }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                      {/* Level Filter */}
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                        <label style={{ fontSize: '12px', color: '#333', fontWeight: 'bold' }}>Level:</label>
-                        <select
-                          value={levelFilter}
-                          onChange={(e) => setLevelFilter(e.target.value as 'all' | 'h' | 'f')}
-                          style={{
-                            padding: '6px 8px',
-                            border: '2px solid #333',
-                            borderRadius: '4px',
-                            fontSize: '12px',
-                            boxSizing: 'border-box'
-                          }}
-                        >
-                          <option value="all">All levels</option>
-                          <option value="h">Higher (H)</option>
-                          <option value="f">Foundation (F)</option>
-                        </select>
-                      </div>
-                      
-                      {/* Calculator Filter */}
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                        <label style={{ fontSize: '12px', color: '#333', fontWeight: 'bold' }}>Calculator:</label>
-                        <select
-                          value={calculatorFilter}
-                          onChange={(e) => setCalculatorFilter(e.target.value as 'all' | 'calculator' | 'non-calculator')}
-                          style={{
-                            padding: '6px 8px',
-                            border: '2px solid #333',
-                            borderRadius: '4px',
-                            fontSize: '12px',
-                            boxSizing: 'border-box'
-                          }}
-                        >
-                          <option value="all">All papers</option>
-                          <option value="non-calculator">Non-Calculator (Paper 1)</option>
-                          <option value="calculator">Calculator (Papers 2 & 3)</option>
-                        </select>
-                      </div>
-                      
-                      {/* Action Buttons */}
-                      <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setLevelFilter('all');
-                            setCalculatorFilter('all');
-                          }}
-                          style={{
-                            flex: 1,
-                            padding: '6px 12px',
-                            backgroundColor: '#f0f0f0',
-                            color: '#333',
-                            border: '1px solid #d9d9d9',
-                            borderRadius: '4px',
-                            cursor: 'pointer',
-                            fontSize: '11px',
-                            fontWeight: 'bold'
-                          }}
-                        >
-                          Clear All
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setShowFilterPopup(false)}
-                          style={{
-                            flex: 1,
-                            padding: '6px 12px',
-                            backgroundColor: '#1890ff',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '4px',
-                            cursor: 'pointer',
-                            fontSize: '11px',
-                            fontWeight: 'bold'
-                          }}
-                        >
-                          Apply
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-              <form onSubmit={handleTextSearch} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                <textarea
-                  value={searchText}
-                  onChange={(e) => setSearchText(e.target.value)}
-                  placeholder="Describe the type of question... (e.g., 'hard quadratic equations', 'trigonometry')"
-                  style={{
-                    width: '100%',
-                    height: '60px',
-                    padding: '8px',
-                    border: '2px solid #333',
-                    borderRadius: '4px',
-                    fontSize: '12px',
-                    resize: 'none',
-                    boxSizing: 'border-box'
-                  }}
-                />
-                <button
-                  type="submit"
-                  disabled={!searchText.trim() || isProcessing}
-                  style={{
-                    padding: '8px 12px',
-                    backgroundColor: searchText.trim() && !isProcessing ? '#28a745' : '#ccc',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '4px',
-                    cursor: searchText.trim() && !isProcessing ? 'pointer' : 'not-allowed',
-                    fontSize: '12px',
-                    fontWeight: 'bold'
-                  }}
-                >
-                  {isProcessing ? 'Searching...' : 'Search'}
-                </button>
-              </form>
-              {topMatches.length > 0 && (
-                <div style={{
-                  marginTop: '12px',
-                  display: 'flex',
-                  gap: '10px'
-                }}>
-                  <button
-                    onClick={prevMatch}
-                    style={{
-                      flex: 1,
-                      padding: '8px 12px',
-                      backgroundColor: '#007bff',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '4px',
-                      cursor: 'pointer',
-                      fontSize: '12px'
-                    }}
-                  >
-                    Previous
-                  </button>
-                  <button
-                    onClick={nextMatch}
-                    style={{
-                      flex: 1,
-                      padding: '8px 12px',
-                      backgroundColor: '#007bff',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '4px',
-                      cursor: 'pointer',
-                      fontSize: '12px'
-                    }}
-                  >
-                    Next
-                  </button>
-                </div>
-              )}
+              {/* Intentionally left blank */}
               {!showWorksheet ? (
                 <button
                   onClick={() => setShowWorksheet(true)}
                   style={{
                     width: '100%',
                     padding: '10px 16px',
-                    backgroundColor: '#1890ff',
-                    color: 'white',
-                    border: 'none',
+                    backgroundColor: '#10a37f',
+                    color: '#fff',
+                    border: '1px solid #10a37f',
                     borderRadius: '4px',
                     cursor: 'pointer',
                     fontSize: '14px',
@@ -762,7 +566,7 @@ function App() {
                 <div style={{
                   marginTop: '15px',
                   padding: '12px',
-                  border: '2px solid #333',
+                  border: '1px solid #e5e5e5',
                   borderRadius: '6px',
                   backgroundColor: '#fff',
                   display: 'flex',
@@ -783,9 +587,9 @@ function App() {
                             }}
                             disabled={selectedQuestions.length === 0 || isSavingPdf}
                             style={{
-                              backgroundColor: selectedQuestions.length === 0 || isSavingPdf ? '#ccc' : '#1890ff',
-                              color: 'white',
-                              border: 'none',
+                              backgroundColor: selectedQuestions.length === 0 || isSavingPdf ? '#c9c9c9' : '#10a37f',
+                              color: '#fff',
+                              border: selectedQuestions.length === 0 || isSavingPdf ? '1px solid #c9c9c9' : '1px solid #10a37f',
                               padding: '6px 12px',
                               borderRadius: '4px',
                               cursor: selectedQuestions.length === 0 || isSavingPdf ? 'not-allowed' : 'pointer',
@@ -804,14 +608,14 @@ function App() {
                           style={{
                             position: 'absolute',
                             right: 0,
-                            backgroundColor: 'white',
+                            backgroundColor: '#ffffff',
                             borderRadius: '4px',
                             boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
                             zIndex: 10,
                             marginTop: '4px',
                             minWidth: '160px',
                             display: 'none',
-                            border: '1px solid #f0f0f0'
+                            border: '1px solid #e5e5e5'
                           }} 
                           id="downloadDropdown"
                         >
@@ -826,8 +630,8 @@ function App() {
                                 padding: '8px 16px',
                                 cursor: 'pointer',
                                 fontSize: '13px',
-                                color: pdfMode === mode ? '#1890ff' : '#333',
-                                backgroundColor: pdfMode === mode ? '#e6f7ff' : 'transparent',
+                                color: '#111',
+                                backgroundColor: 'transparent',
                                 transition: 'all 0.2s',
                                 borderBottom: '1px solid #f5f5f5',
                                 ...(mode === 'interleaved' && {
@@ -841,10 +645,10 @@ function App() {
                                 })
                               }}
                               onMouseEnter={(e) => {
-                                e.currentTarget.style.backgroundColor = '#f5f5f5';
+                                e.currentTarget.style.backgroundColor = '#f2f2f3';
                               }}
                               onMouseLeave={(e) => {
-                                e.currentTarget.style.backgroundColor = pdfMode === mode ? '#e6f7ff' : 'transparent';
+                                e.currentTarget.style.backgroundColor = 'transparent';
                               }}
                               onClick={() => {
                                 setPdfMode(mode as 'questions' | 'answers' | 'interleaved');
@@ -875,9 +679,9 @@ function App() {
                     </div>
                     
                     <div style={{
-                      backgroundColor: 'white',
+                      backgroundColor: '#ffffff',
                       borderRadius: '4px',
-                      border: '1px dashed #d9d9d9',
+                      border: '1px dashed #e5e5e5',
                       padding: '16px',
                       textAlign: 'center',
                       marginBottom: '10px',
@@ -966,78 +770,78 @@ function App() {
               )}
             </div>
 
-            {/* Email Signup Form */}
-            <div style={{ 
-              backgroundColor: '#fff',
-              padding: '15px',
-              borderRadius: '8px',
-              border: '2px solid #333',
-              marginBottom: '20px'
-            }}>
-              {!emailSubmitted ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  <p style={{ 
-                    margin: 0, 
-                    fontSize: '14px', 
-                    color: '#007bff', 
-                    fontWeight: 'bold',
-                    textAlign: 'center'
-                  }}>
-                    Like the product? Drop your email below for more! 🔥
-                  </p>
-                  
-                  {/* Premium Features List */}
-                  <div style={{ fontSize: '12px', color: '#666', lineHeight: '1.4' }}>
-                    <div>• Example Solutions</div>
-                    <div>• A Levels</div>
-                    <div>• More GCSE subjects</div>
-                    <div>• AI tutor</div>
-                  </div>
-                  
-                  <form onSubmit={handleEmailSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    <input
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder="Enter your email for updates"
-                      style={{
-                        padding: '8px 12px',
-                        border: '2px solid #333',
-                        borderRadius: '4px',
-                        fontSize: '12px',
-                        width: '100%',
-                        boxSizing: 'border-box'
-                      }}
-                    />
-                    <button
-                      type="submit"
-                      style={{
-                        padding: '8px 16px',
-                        backgroundColor: email.trim() ? '#28a745' : '#ccc',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '4px',
-                        cursor: email.trim() ? 'pointer' : 'not-allowed',
-                        fontSize: '12px',
-                        fontWeight: 'bold'
-                      }}
-                      disabled={!email.trim()}
-                    >
-                      Submit
-                    </button>
-                  </form>
-                  {emailError && (
-                    <p style={{ color: 'red', fontSize: '11px', margin: 0, textAlign: 'center' }}>
-                      {emailError}
+            {false && (
+              <div style={{ 
+                backgroundColor: '#ffffff',
+                padding: '15px',
+                borderRadius: '8px',
+                border: '1px solid #e5e5e5',
+                marginBottom: '20px'
+              }}>
+                {!emailSubmitted ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    <p style={{ 
+                      margin: 0, 
+                      fontSize: '14px', 
+                      color: '#333', 
+                      fontWeight: 'bold',
+                      textAlign: 'center'
+                    }}>
+                      Like the product? Drop your email below for more! 🔥
                     </p>
-                  )}
-                </div>
-              ) : (
-                <p style={{ color: '#28a745', fontSize: '12px', margin: 0, fontWeight: 'bold', textAlign: 'center' }}>
-                  Thank you for signing up! ✓
-                </p>
-              )}
-            </div>
+                    {/* Premium Features List */}
+                    <div style={{ fontSize: '12px', color: '#666', lineHeight: '1.4' }}>
+                      <div>• Example Solutions</div>
+                      <div>• A Levels</div>
+                      <div>• More GCSE subjects</div>
+                      <div>• AI tutor</div>
+                    </div>
+                    <form onSubmit={handleEmailSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <input
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        placeholder="Enter your email for updates"
+                        style={{
+                          padding: '8px 12px',
+                          border: '1px solid #e5e5e5',
+                          borderRadius: '4px',
+                          fontSize: '12px',
+                          width: '100%',
+                          boxSizing: 'border-box'
+                        }}
+                      />
+                      <button
+                        type="submit"
+                        style={{
+                          padding: '8px 16px',
+                          backgroundColor: email.trim() ? '#10a37f' : '#e5e5e5',
+                          color: email.trim() ? '#fff' : '#333',
+                          border: '1px solid',
+                          borderColor: email.trim() ? '#10a37f' : '#e5e5e5',
+                          borderRadius: '4px',
+                          cursor: email.trim() ? 'pointer' : 'not-allowed',
+                          fontSize: '12px',
+                          fontWeight: 'bold'
+                        }}
+                        disabled={!email.trim()}
+                      >
+                        Submit
+                      </button>
+                    </form>
+                    {emailError && (
+                      <p style={{ color: 'red', fontSize: '11px', margin: 0, textAlign: 'center' }}>
+                        {emailError}
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <p style={{ color: '#28a745', fontSize: '12px', margin: 0, fontWeight: 'bold', textAlign: 'center' }}>
+                    Thank you for signing up! ✓
+                  </p>
+                )}
+              </div>
+            )}
 
             {/* OCR Results */}
             {isProcessing && (
@@ -1056,18 +860,79 @@ function App() {
         position: 'relative',
         height: '100vh',
         display: 'flex',
-        flexDirection: 'column'
+        flexDirection: 'column',
+        overflow: 'hidden',
+        backgroundColor: '#ffffff'
       }}>
+        {!hasStarted && !isProcessing && (!currentMatch || currentMatch.labelId === 'error') && (
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+            <div style={{ width: '100%', maxWidth: '760px', margin: '0 auto', padding: '24px' }}>
+              <div style={{ textAlign: 'center', marginBottom: '18px' }}>
+                <h1 style={{ margin: 0, fontSize: '28px', fontWeight: 600, color: '#111' }}>Find Similar GCSE Maths Questions</h1>
+              </div>
+              <form onSubmit={handleTextSearch} style={{ backgroundColor: '#ffffff', border: '1px solid #e5e5e5', borderRadius: '9999px', padding: '6px 12px', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <button type="button" onClick={() => setShowCenterFilter(true)} aria-label="Filters" style={{ width: '32px', height: '32px', borderRadius: '9999px', border: '1px solid #e5e5e5', background: '#fff', color: '#555', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <line x1="4" y1="6" x2="20" y2="6" />
+                      <circle cx="8" cy="6" r="2" />
+                      <line x1="4" y1="12" x2="20" y2="12" />
+                      <circle cx="14" cy="12" r="2" />
+                      <line x1="4" y1="18" x2="20" y2="18" />
+                      <circle cx="10" cy="18" r="2" />
+                    </svg>
+                  </button>
+                  <textarea
+                  value={searchText}
+                  onChange={(e) => setSearchText(e.target.value)}
+                  onInput={(e) => {
+                    const t = e.currentTarget as HTMLTextAreaElement;
+                    t.style.height = 'auto';
+                    t.style.height = t.scrollHeight + 'px';
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      if (searchText.trim() && !isProcessing) {
+                        setHasStarted(true);
+                        searchByText(searchText);
+                      }
+                    }
+                  }}
+                  placeholder="Describe the question of your dreams"
+                  rows={1}
+                  style={{
+                    flex: 1,
+                    height: 'auto',
+                    minHeight: '44px',
+                    padding: '10px 12px',
+                    border: 'none',
+                    outline: 'none',
+                    fontSize: '16px',
+                    resize: 'none',
+                    boxSizing: 'border-box',
+                    background: 'transparent',
+                    overflow: 'hidden'
+                  }}
+                />
+                </div>
+              </form>
+            </div>
+            <div style={{ position: 'absolute', bottom: '16px', left: 0, right: 0, textAlign: 'center', color: '#8e8ea0', fontSize: '11px' }}>
+              Find Similar GCSE Maths Questions 2025.
+            </div>
+          </div>
+        )}
         {currentMatch && !isProcessing && currentMatch.labelId !== 'error' && (
           <>
             <div style={{
               flex: 'none',
               padding: '8px 16px',
-              borderBottom: '2px solid #ddd',
+              borderBottom: '1px solid #e5e5e5',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
-              backgroundColor: '#f5f5f5',
+              backgroundColor: '#ffffff',
               boxSizing: 'border-box'
             }}>
               <span style={{ fontSize: '13px', fontWeight: 600, color: '#333', flex: 1, marginRight: '10px' }}>
@@ -1077,29 +942,43 @@ function App() {
                 <span style={{ fontSize: '11px', color: '#555' }}>
                   Match {currentMatchIndex + 1} of {topMatches.length}
                 </span>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button
+                    onClick={prevMatch}
+                    style={{ padding: '6px 10px', backgroundColor: '#f2f2f3', color: '#111', border: '1px solid #e5e5e5', borderRadius: '4px', cursor: 'pointer', fontSize: '11px' }}
+                  >
+                    Previous
+                  </button>
+                  <button
+                    onClick={nextMatch}
+                    style={{ padding: '6px 10px', backgroundColor: '#f2f2f3', color: '#111', border: '1px solid #e5e5e5', borderRadius: '4px', cursor: 'pointer', fontSize: '11px' }}
+                  >
+                    Next
+                  </button>
+                </div>
                 <button
                   onClick={toggleCurrentQuestionSelection}
                   style={{
                     padding: '6px 10px',
-                    backgroundColor: isCurrentSelected ? '#dc3545' : '#28a745',
+                    backgroundColor: isCurrentSelected ? '#ef4444' : '#10a37f',
                     color: '#fff',
-                    border: 'none',
+                    border: '1px solid',
+                    borderColor: isCurrentSelected ? '#ef4444' : '#10a37f',
                     borderRadius: '4px',
                     cursor: 'pointer',
                     fontSize: '11px',
                     fontWeight: 'bold'
                   }}
                 >
-                  {isCurrentSelected ? 'Remove from list' : 'Add to list'}
+                  {isCurrentSelected ? 'Remove from list' : 'Add to worksheet'}
                 </button>
               </div>
             </div>
             <div style={{
-              flex: 'none',
-              height: showMarkScheme ? '50vh' : '100vh',
-              padding: '20px',
+              flex: 1,
+              padding: '0px',
               boxSizing: 'border-box',
-              overflowY: 'scroll'
+              overflowY: 'auto'
             }}>
               <img
                 src={`/edexcel-gcse-maths-questions/${currentMatch.labelId}`}
@@ -1118,10 +997,11 @@ function App() {
                 bottom: '20px',
                 left: `${sidebarWidth + 20}px`,
                 padding: '10px 14px',
-                backgroundColor: showMarkScheme ? '#dc3545' : '#007bff',
+                backgroundColor: showMarkScheme ? '#6b7280' : '#10a37f',
                 color: '#fff',
-                border: 'none',
-                borderRadius: '6px',
+                border: '1px solid',
+                borderColor: showMarkScheme ? '#6b7280' : '#10a37f',
+                borderRadius: '9999px',
                 cursor: 'pointer',
                 fontSize: '13px',
                 fontWeight: 600,
@@ -1129,17 +1009,16 @@ function App() {
                 zIndex: 10
               }}
             >
-              {showMarkScheme ? 'Hide mark scheme' : 'View mark scheme'}
+              {showMarkScheme ? 'Hide mark scheme' : 'Show mark scheme'}
             </button>
             {showMarkScheme && (
               <div style={{
-                flex: 'none',
-                height: '50vh',
-                padding: '20px',
+                flex: 1,
+                padding: '20px 20px 96px 20px',
                 boxSizing: 'border-box',
-                borderTop: '2px solid #ddd',
+                borderTop: '1px solid #e5e5e5',
                 backgroundColor: '#ffffff',
-                overflowY: 'scroll'
+                overflowY: 'auto'
               }}>
                 <img
                   src={`/edexcel-gcse-maths-answers/${currentMatch.labelId}`}
@@ -1150,6 +1029,7 @@ function App() {
                     display: 'block'
                   }}
                 />
+                <div style={{ height: '120px' }} />
               </div>
             )}
           </>
@@ -1187,7 +1067,7 @@ function App() {
             <div style={{ 
               textAlign: 'center',
               fontSize: '18px',
-              color: '#007bff',
+              color: '#10a37f',
               fontWeight: 'bold'
             }}>
               Processing...
@@ -1195,6 +1075,87 @@ function App() {
               <span style={{ fontSize: '14px', color: '#666', fontWeight: 'normal' }}>
                 Finding similar questions...
               </span>
+            </div>
+          </div>
+        )}
+
+        {hasStarted && !isProcessing && (
+          <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '16px 0', background: 'linear-gradient(180deg, rgba(247,247,248,0) 0%, rgba(247,247,248,1) 40%)' }}>
+            <div style={{ width: '100%', maxWidth: '800px', margin: '0 auto', padding: '0 24px' }}>
+              <form onSubmit={handleTextSearch} style={{ backgroundColor: '#ffffff', border: '1px solid #e5e5e5', borderRadius: '9999px', padding: '6px 12px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <button type="button" onClick={() => setShowCenterFilter(true)} aria-label="Filters" style={{ width: '32px', height: '32px', borderRadius: '9999px', border: '1px solid #e5e5e5', background: '#fff', color: '#555', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <line x1="4" y1="6" x2="20" y2="6" />
+                      <circle cx="8" cy="6" r="2" />
+                      <line x1="4" y1="12" x2="20" y2="12" />
+                      <circle cx="14" cy="12" r="2" />
+                      <line x1="4" y1="18" x2="20" y2="18" />
+                      <circle cx="10" cy="18" r="2" />
+                    </svg>
+                  </button>
+                  <textarea
+                    value={searchText}
+                    onChange={(e) => setSearchText(e.target.value)}
+                    onInput={(e) => {
+                      const t = e.currentTarget as HTMLTextAreaElement;
+                      t.style.height = 'auto';
+                      t.style.height = t.scrollHeight + 'px';
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        if (searchText.trim() && !isProcessing) {
+                          searchByText(searchText);
+                        }
+                      }
+                    }}
+                    placeholder="Describe the question of your dreams"
+                    rows={1}
+                    style={{ flex: 1, height: 'auto', minHeight: '44px', padding: '10px 12px', border: 'none', outline: 'none', fontSize: '16px', resize: 'none', boxSizing: 'border-box', background: 'transparent', overflow: 'hidden' }}
+                  />
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {showCenterFilter && (
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+            <div style={{ width: '100%', maxWidth: '520px', background: '#fff', border: '1px solid #e5e5e5', borderRadius: '12px', boxShadow: '0 8px 24px rgba(0,0,0,0.15)', padding: '16px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                <h3 style={{ margin: 0, fontSize: '16px', color: '#111' }}>Filters</h3>
+                <button onClick={() => setShowCenterFilter(false)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: '#555', fontSize: '16px' }} aria-label="Close">×</button>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <label style={{ fontSize: '12px', color: '#333', fontWeight: 'bold' }}>Level:</label>
+                  <select value={levelFilter} onChange={(e) => setLevelFilter(e.target.value as 'all' | 'h' | 'f')} style={{ padding: '6px 8px', border: '1px solid #e5e5e5', borderRadius: '6px', fontSize: '12px' }}>
+                    <option value="all">All levels</option>
+                    <option value="h">Higher (H)</option>
+                    <option value="f">Foundation (F)</option>
+                  </select>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <label style={{ fontSize: '12px', color: '#333', fontWeight: 'bold' }}>Calculator:</label>
+                  <select value={calculatorFilter} onChange={(e) => setCalculatorFilter(e.target.value as 'all' | 'calculator' | 'non-calculator')} style={{ padding: '6px 8px', border: "1px solid #e5e5e5", borderRadius: '6px', fontSize: '12px' }}>
+                    <option value="all">All papers</option>
+                    <option value="non-calculator">Non-Calculator (Paper 1)</option>
+                    <option value="calculator">Calculator (Papers 2 & 3)</option>
+                  </select>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <label style={{ fontSize: '12px', color: '#333', fontWeight: 'bold' }}>Number of Matches (MAX 30):</label>
+                  <input type="text" inputMode="numeric" pattern="[0-9]*" value={numMatches}
+                    onChange={(e) => { const value = e.target.value; if (value === '') { setNumMatches('' as any); return; } const digits = value.replace(/\D/g, ''); if (digits) { const num = parseInt(digits, 10); if (num >= 1 && num <= 30) { setNumMatches(num); } } }}
+                    onBlur={(e) => { const value = e.target.value; if (value === '') { setNumMatches(10); } else { const num = parseInt(value, 10); if (isNaN(num) || num < 1) setNumMatches(1); else if (num > 30) setNumMatches(30); else setNumMatches(num); } }}
+                    style={{ padding: '6px 8px', border: '1px solid #e5e5e5', borderRadius: '6px', fontSize: '12px' }} />
+                </div>
+                <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
+                  <button type="button" onClick={() => { setLevelFilter('all'); setCalculatorFilter('all'); }} style={{ flex: 1, padding: '8px 12px', background: '#f2f2f3', color: '#111', border: '1px solid #e5e5e5', borderRadius: '6px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>Clear All</button>
+                  <button type="button" onClick={() => setShowCenterFilter(false)} style={{ flex: 1, padding: '8px 12px', background: '#10a37f', color: '#fff', border: '1px solid #10a37f', borderRadius: '6px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>Apply</button>
+                </div>
+              </div>
             </div>
           </div>
         )}
