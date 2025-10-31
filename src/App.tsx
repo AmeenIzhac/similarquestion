@@ -13,10 +13,11 @@ const searchPinecone = async (
 ) => {
   try {
     const pineconeApiKey = import.meta.env.VITE_PINECONE_API_KEY;
-    const indexHost = import.meta.env.VITE_PINECONE_INDEX_HOST;
+    const indexHost1 = import.meta.env.VITE_PINECONE_INDEX_HOST1;
+    const indexHost2 = import.meta.env.VITE_PINECONE_INDEX_HOST2;
     const namespace = import.meta.env.VITE_PINECONE_NAMESPACE || 'example-namespace';
     
-    if (!pineconeApiKey || !indexHost) {
+    if (!pineconeApiKey || !indexHost2) {
       console.error('Pinecone API key or index host not configured');
       return null;
     }
@@ -37,7 +38,7 @@ const searchPinecone = async (
     // If no filters applied, set to undefined
     const finalFilter = Object.keys(filter).length === 0 ? undefined : filter;
 
-    const response = await fetch(`https://${indexHost}/records/namespaces/${namespace}/search`, {
+    const response = await fetch(`https://${indexHost2}/records/namespaces/${namespace}/search`, {
       method: 'POST',
       headers: {
         'Accept': 'application/json',
@@ -540,6 +541,27 @@ function App() {
             {/* Text search section removed from sidebar */}
             <div style={{ marginBottom: '20px' }}>
               {/* Intentionally left blank */}
+              <button
+                onClick={() => setShowCenterFilter(true)}
+                style={{
+                  width: '100%',
+                  padding: '10px 16px',
+                  backgroundColor: '#10a37f',
+                  color: '#fff',
+                  border: '1px solid #10a37f',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: 600,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
+                  marginTop: '15px'
+                }}
+              >
+                Filter Questions
+              </button>
               {!showWorksheet ? (
                 <button
                   onClick={() => setShowWorksheet(true)}
@@ -872,16 +894,6 @@ function App() {
               </div>
               <form onSubmit={handleTextSearch} style={{ backgroundColor: '#ffffff', border: '1px solid #e5e5e5', borderRadius: '9999px', padding: '6px 12px', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <button type="button" onClick={() => setShowCenterFilter(true)} aria-label="Filters" style={{ width: '32px', height: '32px', borderRadius: '9999px', border: '1px solid #e5e5e5', background: '#fff', color: '#555', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                      <line x1="4" y1="6" x2="20" y2="6" />
-                      <circle cx="8" cy="6" r="2" />
-                      <line x1="4" y1="12" x2="20" y2="12" />
-                      <circle cx="14" cy="12" r="2" />
-                      <line x1="4" y1="18" x2="20" y2="18" />
-                      <circle cx="10" cy="18" r="2" />
-                    </svg>
-                  </button>
                   <textarea
                   value={searchText}
                   onChange={(e) => setSearchText(e.target.value)}
@@ -1084,16 +1096,6 @@ function App() {
             <div style={{ width: '100%', maxWidth: '800px', margin: '0 auto', padding: '0 24px' }}>
               <form onSubmit={handleTextSearch} style={{ backgroundColor: '#ffffff', border: '1px solid #e5e5e5', borderRadius: '9999px', padding: '6px 12px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <button type="button" onClick={() => setShowCenterFilter(true)} aria-label="Filters" style={{ width: '32px', height: '32px', borderRadius: '9999px', border: '1px solid #e5e5e5', background: '#fff', color: '#555', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                      <line x1="4" y1="6" x2="20" y2="6" />
-                      <circle cx="8" cy="6" r="2" />
-                      <line x1="4" y1="12" x2="20" y2="12" />
-                      <circle cx="14" cy="12" r="2" />
-                      <line x1="4" y1="18" x2="20" y2="18" />
-                      <circle cx="10" cy="18" r="2" />
-                    </svg>
-                  </button>
                   <textarea
                     value={searchText}
                     onChange={(e) => setSearchText(e.target.value)}
@@ -1121,39 +1123,77 @@ function App() {
         )}
 
         {showCenterFilter && (
-          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-            <div style={{ width: '100%', maxWidth: '520px', background: '#fff', border: '1px solid #e5e5e5', borderRadius: '12px', boxShadow: '0 8px 24px rgba(0,0,0,0.15)', padding: '16px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                <h3 style={{ margin: 0, fontSize: '16px', color: '#111' }}>Filters</h3>
-                <button onClick={() => setShowCenterFilter(false)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: '#555', fontSize: '16px' }} aria-label="Close">×</button>
+          <div
+            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}
+            onClick={(e) => { if (e.target === e.currentTarget) setShowCenterFilter(false); }}
+          >
+            <div
+              style={{ width: '100%', maxWidth: '560px', background: '#fff', border: '1px solid #eaeaea', borderRadius: '12px', boxShadow: '0 10px 30px rgba(0,0,0,0.12)', padding: '20px' }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                <h3 style={{ margin: 0, fontSize: '18px', color: '#111', fontWeight: 600 }}>Filters</h3>
+                <button
+                  onClick={() => setShowCenterFilter(false)}
+                  style={{ border: '1px solid #e5e5e5', background: '#fff', cursor: 'pointer', color: '#333', fontSize: '16px', width: '28px', height: '28px', borderRadius: '9999px', lineHeight: 1 }}
+                  aria-label="Close"
+                >
+                  ×
+                </button>
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <label style={{ fontSize: '12px', color: '#333', fontWeight: 'bold' }}>Level:</label>
-                  <select value={levelFilter} onChange={(e) => setLevelFilter(e.target.value as 'all' | 'h' | 'f')} style={{ padding: '6px 8px', border: '1px solid #e5e5e5', borderRadius: '6px', fontSize: '12px' }}>
+                  <label style={{ fontSize: '13px', color: '#111', fontWeight: 600 }}>Level</label>
+                  <select
+                    value={levelFilter}
+                    onChange={(e) => setLevelFilter(e.target.value as 'all' | 'h' | 'f')}
+                    style={{ padding: '10px 12px', border: '1px solid #e5e5e5', borderRadius: '8px', fontSize: '14px', background: '#fff' }}
+                  >
                     <option value="all">All levels</option>
                     <option value="h">Higher (H)</option>
                     <option value="f">Foundation (F)</option>
                   </select>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <label style={{ fontSize: '12px', color: '#333', fontWeight: 'bold' }}>Calculator:</label>
-                  <select value={calculatorFilter} onChange={(e) => setCalculatorFilter(e.target.value as 'all' | 'calculator' | 'non-calculator')} style={{ padding: '6px 8px', border: "1px solid #e5e5e5", borderRadius: '6px', fontSize: '12px' }}>
+                  <label style={{ fontSize: '13px', color: '#111', fontWeight: 600 }}>Calculator</label>
+                  <select
+                    value={calculatorFilter}
+                    onChange={(e) => setCalculatorFilter(e.target.value as 'all' | 'calculator' | 'non-calculator')}
+                    style={{ padding: '10px 12px', border: '1px solid #e5e5e5', borderRadius: '8px', fontSize: '14px', background: '#fff' }}
+                  >
                     <option value="all">All papers</option>
                     <option value="non-calculator">Non-Calculator (Paper 1)</option>
                     <option value="calculator">Calculator (Papers 2 & 3)</option>
                   </select>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <label style={{ fontSize: '12px', color: '#333', fontWeight: 'bold' }}>Number of Matches (MAX 30):</label>
-                  <input type="text" inputMode="numeric" pattern="[0-9]*" value={numMatches}
+                  <label style={{ fontSize: '13px', color: '#111', fontWeight: 600 }}>Number of Matches (max 30)</label>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    min={1}
+                    max={30}
+                    value={numMatches as any}
                     onChange={(e) => { const value = e.target.value; if (value === '') { setNumMatches('' as any); return; } const digits = value.replace(/\D/g, ''); if (digits) { const num = parseInt(digits, 10); if (num >= 1 && num <= 30) { setNumMatches(num); } } }}
                     onBlur={(e) => { const value = e.target.value; if (value === '') { setNumMatches(10); } else { const num = parseInt(value, 10); if (isNaN(num) || num < 1) setNumMatches(1); else if (num > 30) setNumMatches(30); else setNumMatches(num); } }}
-                    style={{ padding: '6px 8px', border: '1px solid #e5e5e5', borderRadius: '6px', fontSize: '12px' }} />
+                    style={{ padding: '10px 12px', border: '1px solid #e5e5e5', borderRadius: '8px', fontSize: '14px' }}
+                  />
                 </div>
-                <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
-                  <button type="button" onClick={() => { setLevelFilter('all'); setCalculatorFilter('all'); }} style={{ flex: 1, padding: '8px 12px', background: '#f2f2f3', color: '#111', border: '1px solid #e5e5e5', borderRadius: '6px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>Clear All</button>
-                  <button type="button" onClick={() => setShowCenterFilter(false)} style={{ flex: 1, padding: '8px 12px', background: '#10a37f', color: '#fff', border: '1px solid #10a37f', borderRadius: '6px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>Apply</button>
+                <div style={{ display: 'flex', gap: '10px', marginTop: '6px' }}>
+                  <button
+                    type="button"
+                    onClick={() => { setLevelFilter('all'); setCalculatorFilter('all'); }}
+                    style={{ flex: 1, height: '40px', padding: '0 12px', background: '#f5f5f6', color: '#111', border: '1px solid #e5e5e5', borderRadius: '8px', fontSize: '14px', fontWeight: 600, cursor: 'pointer' }}
+                  >
+                    Clear All
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowCenterFilter(false)}
+                    style={{ flex: 1, height: '40px', padding: '0 12px', background: '#10a37f', color: '#fff', border: '1px solid #109e7b', borderRadius: '8px', fontSize: '14px', fontWeight: 600, cursor: 'pointer' }}
+                  >
+                    Apply
+                  </button>
                 </div>
               </div>
             </div>

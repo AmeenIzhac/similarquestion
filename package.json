@@ -13,6 +13,7 @@
     "@mistralai/mistralai": "^1.9.18",
     "docx": "^9.5.1",
     "file-saver": "^2.0.5",
+    "html-to-docx": "^1.8.0",
     "jspdf": "^2.5.2",
     "lucide-react": "^0.344.0",
     "mistral": "^0.0.4",
