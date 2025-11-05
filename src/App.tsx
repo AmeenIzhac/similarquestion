@@ -1,8 +1,7 @@
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { Mistral } from '@mistralai/mistralai';
 import jsPDF from 'jspdf';
-
-
+import emailjs from '@emailjs/browser';
 
 // Function to search Pinecone using REST API
 const searchPinecone = async (
@@ -112,7 +111,106 @@ function App() {
   const [numMatches, setNumMatches] = useState<number>(10);
   const [hasStarted, setHasStarted] = useState<boolean>(false);
   const [showCenterFilter, setShowCenterFilter] = useState<boolean>(false);
+  const [showFeedbackForm, setShowFeedbackForm] = useState<boolean>(false);
 
+  const [formData, setFormData] = useState({
+    email: '',
+    message: ''
+  });
+  const [formStatus, setFormStatus] = useState({
+    isSubmitting: false,
+    isSuccess: false,
+    isError: false,
+    message: ''
+  });
+
+  const EMAILJS_SERVICE_ID = import.meta.env.VITE_EMAILJS_SERVICE_ID || 'service_oek5h8g';
+  const EMAILJS_TEMPLATE_ID = import.meta.env.VITE_EMAILJS_TEMPLATE_ID || 'template_1zfstkg';
+  const EMAILJS_PUBLIC_KEY = import.meta.env.VITE_EMAILJS_PUBLIC_KEY || 'qek1xidpKLDofXa4z';
+
+  React.useEffect(() => {
+    if (EMAILJS_PUBLIC_KEY !== 'qek1xidpKLDofXa4z') {
+      emailjs.init(EMAILJS_PUBLIC_KEY);
+    }
+  }, [EMAILJS_PUBLIC_KEY]);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // Basic validation
+    if (!formData.message.trim()) {
+      setFormStatus({
+        isSubmitting: false,
+        isSuccess: false,
+        isError: true,
+        message: 'Please let us know how we can help.'
+      });
+      return;
+    }
+
+    if (!EMAILJS_PUBLIC_KEY || EMAILJS_PUBLIC_KEY === 'qrpDqd4BYagZAeDXk') {
+      setFormStatus({
+        isSubmitting: false,
+        isSuccess: false,
+        isError: true,
+        message: 'EmailJS is not configured. Please contact the administrator.'
+      });
+      return;
+    }
+
+    setFormStatus({
+      isSubmitting: true,
+      isSuccess: false,
+      isError: false,
+      message: ''
+    });
+
+    try {
+      const templateParams = {
+        from_name: 'Website Visitor',
+        from_email: formData.email || 'Not provided',
+        message: formData.message,
+        to_email: 'start@oasissummerschool.com' // Your email address
+      };
+
+      await emailjs.send(
+        EMAILJS_SERVICE_ID,
+        EMAILJS_TEMPLATE_ID,
+        templateParams,
+        EMAILJS_PUBLIC_KEY
+      );
+
+      setFormStatus({
+        isSubmitting: false,
+        isSuccess: true,
+        isError: false,
+        message: 'Message sent successfully! We\'ll get back to you soon, God willing.'
+      });
+
+      // Reset form
+      setFormData({
+        email: '',
+        message: ''
+      });
+
+    } catch (error) {
+      console.error('EmailJS error:', error);
+      setFormStatus({
+        isSubmitting: false,
+        isSuccess: false,
+        isError: true,
+        message: 'Failed to send message. Please try again or contact us directly.'
+      });
+    }
+  };
 
   useEffect(() => {
     const mistralApiKey = import.meta.env.VITE_MISTRAL_API_KEY;
@@ -562,29 +660,143 @@ function App() {
               >
                 Filter Questions
               </button>
-              {!showWorksheet ? (
-                <button
-                  onClick={() => setShowWorksheet(true)}
+              <button
+                onClick={() => setShowWorksheet(true)}
+                style={{
+                  width: '100%',
+                  padding: '10px 16px',
+                  backgroundColor: '#10a37f',
+                  color: '#fff',
+                  border: '1px solid #10a37f',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: 600,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
+                  marginTop: '15px'
+                }}
+              >
+                Make Worksheet
+              </button>
+
+              <button
+                onClick={() => {
+                  setShowFeedbackForm((prev) => {
+                    const next = !prev;
+                    if (!next) {
+                      setFormStatus({
+                        isSubmitting: false,
+                        isSuccess: false,
+                        isError: false,
+                        message: ''
+                      });
+                    }
+                    return next;
+                  });
+                }}
+                style={{
+                  width: '100%',
+                  padding: '10px 16px',
+                  backgroundColor: showFeedbackForm ? '#0e8d6d' : '#10a37f',
+                  color: '#fff',
+                  border: '1px solid #10a37f',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: 600,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
+                  marginTop: '12px'
+                }}
+              >
+                {showFeedbackForm ? 'Hide Feedback' : 'Request Features'}
+              </button>
+
+              {showFeedbackForm && (
+                <form
+                  onSubmit={handleSubmit}
                   style={{
-                    width: '100%',
-                    padding: '10px 16px',
-                    backgroundColor: '#10a37f',
-                    color: '#fff',
-                    border: '1px solid #10a37f',
-                    borderRadius: '4px',
-                    cursor: 'pointer',
-                    fontSize: '14px',
-                    fontWeight: 600,
+                    marginTop: '12px',
+                    padding: '12px',
+                    border: '1px solid #e5e5e5',
+                    borderRadius: '6px',
+                    backgroundColor: '#fff',
                     display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '6px',
-                    marginTop: '15px'
+                    flexDirection: 'column',
+                    gap: '8px'
                   }}
                 >
-                  Make Worksheet
-                </button>
-              ) : (
+                  <div style={{ fontSize: '13px', color: 'black', lineHeight: 1.4, fontWeight: 600 }}>
+                    Share feedback, report bugs, or suggest features you'd like to see.
+                  </div>
+                  <textarea
+                    name="message"
+                    placeholder="How can we help?"
+                    value={formData.message}
+                    onChange={handleInputChange}
+                    rows={3}
+                    style={{
+                      width: '100%',
+                      padding: '8px 10px',
+                      borderRadius: '4px',
+                      border: '1px solid #d1d5db',
+                      fontSize: '13px',
+                      resize: 'vertical'
+                    }}
+                  />
+                  <input
+                    type="email"
+                    name="email"
+                    placeholder="Email (optional for a reply)"
+                    value={formData.email}
+                    onChange={handleInputChange}
+                    style={{
+                      width: '100%',
+                      padding: '8px 10px',
+                      borderRadius: '4px',
+                      border: '1px solid #d1d5db',
+                      fontSize: '13px'
+                    }}
+                  />
+                  <div style={{ fontSize: '11px', color: '#6b7280' }}>
+                    Leave your email if you would like us to follow up.
+                  </div>
+                  {formStatus.message && (
+                    <div
+                      style={{
+                        fontSize: '12px',
+                        color: formStatus.isError ? '#b91c1c' : '#047857'
+                      }}
+                    >
+                      {formStatus.message}
+                    </div>
+                  )}
+                  <button
+                    type="submit"
+                    disabled={formStatus.isSubmitting}
+                    style={{
+                      alignSelf: 'flex-end',
+                      padding: '8px 16px',
+                      backgroundColor: formStatus.isSubmitting ? '#9ca3af' : '#10a37f',
+                      color: '#fff',
+                      border: 'none',
+                      borderRadius: '4px',
+                      cursor: formStatus.isSubmitting ? 'not-allowed' : 'pointer',
+                      fontSize: '13px',
+                      fontWeight: 600
+                    }}
+                  >
+                    {formStatus.isSubmitting ? 'Sending...' : 'Send Message'}
+                  </button>
+                </form>
+              )}
+
+              {showWorksheet && (
                 <div style={{
                   marginTop: '15px',
                   padding: '12px',
