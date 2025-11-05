@@ -661,7 +661,17 @@ function App() {
                 Filter Questions
               </button>
               <button
-                onClick={() => setShowWorksheet(true)}
+                onClick={() => {
+                  setShowWorksheet((prev) => {
+                    if (prev) {
+                      const dropdown = document.getElementById('downloadDropdown');
+                      if (dropdown) {
+                        dropdown.style.display = 'none';
+                      }
+                    }
+                    return !prev;
+                  });
+                }}
                 style={{
                   width: '100%',
                   padding: '10px 16px',
@@ -679,7 +689,7 @@ function App() {
                   marginTop: '15px'
                 }}
               >
-                Make Worksheet
+                {showWorksheet ? 'Hide Worksheet' : 'Make Worksheet'}
               </button>
 
               <button
@@ -810,7 +820,28 @@ function App() {
                   <div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
                       <h4 style={{ margin: 0, fontSize: '13px', color: '#333', fontWeight: 'bold' }}>Worksheet</h4>
-                      <div style={{ position: 'relative', display: 'inline-block' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <button
+                          onClick={() => {
+                            setShowWorksheet(false);
+                            const dropdown = document.getElementById('downloadDropdown');
+                            if (dropdown) {
+                              dropdown.style.display = 'none';
+                            }
+                          }}
+                          style={{
+                            background: 'transparent',
+                            border: 'none',
+                            color: '#6b7280',
+                            cursor: 'pointer',
+                            fontSize: '12px',
+                            fontWeight: 600,
+                            padding: '4px 8px'
+                          }}
+                          aria-label="Hide worksheet"
+                        >
+                          Hide
+                        </button>
                         <div style={{ position: 'relative', display: 'inline-block' }}>
                           <button
                             onClick={() => {
@@ -838,79 +869,83 @@ function App() {
                             {isSavingPdf ? 'Saving...' : `Download ${pdfMode === 'questions' ? 'Questions' : pdfMode === 'answers' ? 'Answers' : 'Q&A'}`}
                             <span style={{ fontSize: '10px', marginLeft: '4px' }}>▼</span>
                           </button>
-                        <div 
-                          style={{
-                            position: 'absolute',
-                            right: 0,
-                            backgroundColor: '#ffffff',
-                            borderRadius: '4px',
-                            boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
-                            zIndex: 10,
-                            marginTop: '4px',
-                            minWidth: '160px',
-                            display: 'none',
-                            border: '1px solid #e5e5e5'
-                          }} 
-                          id="downloadDropdown"
-                        >
-                          {[
-                            { mode: 'questions', label: 'Questions Only' },
-                            { mode: 'answers', label: 'Answers Only' },
-                            { mode: 'interleaved', label: 'Questions & Answers' }
-                          ].map(({ mode, label }) => (
-                            <div 
-                              key={mode}
-                              style={{
-                                padding: '8px 16px',
-                                cursor: 'pointer',
-                                fontSize: '13px',
-                                color: '#111',
-                                backgroundColor: 'transparent',
-                                transition: 'all 0.2s',
-                                borderBottom: '1px solid #f5f5f5',
-                                ...(mode === 'interleaved' && {
-                                  borderBottom: 'none',
-                                  borderBottomLeftRadius: '4px',
-                                  borderBottomRightRadius: '4px'
-                                }),
-                                ...(mode === 'questions' && {
-                                  borderTopLeftRadius: '4px',
-                                  borderTopRightRadius: '4px'
-                                })
-                              }}
-                              onMouseEnter={(e) => {
-                                e.currentTarget.style.backgroundColor = '#f2f2f3';
-                              }}
-                              onMouseLeave={(e) => {
-                                e.currentTarget.style.backgroundColor = 'transparent';
-                              }}
-                              onClick={() => {
-                                setPdfMode(mode as 'questions' | 'answers' | 'interleaved');
-                                document.getElementById('downloadDropdown')!.style.display = 'none';
-                                handleDownloadSelected();
-                              }}
-                            >
-                              {label}
-                            </div>
-                          ))}
+                          <div
+                            style={{
+                              position: 'absolute',
+                              right: 0,
+                              backgroundColor: '#ffffff',
+                              borderRadius: '4px',
+                              boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                              zIndex: 10,
+                              marginTop: '4px',
+                              minWidth: '160px',
+                              display: 'none',
+                              border: '1px solid #e5e5e5'
+                            }}
+                            id="downloadDropdown"
+                          >
+                            {[
+                              { mode: 'questions', label: 'Questions Only' },
+                              { mode: 'answers', label: 'Answers Only' },
+                              { mode: 'interleaved', label: 'Questions & Answers' }
+                            ].map(({ mode, label }) => (
+                              <div
+                                key={mode}
+                                style={{
+                                  padding: '8px 16px',
+                                  cursor: 'pointer',
+                                  fontSize: '13px',
+                                  color: '#111',
+                                  backgroundColor: 'transparent',
+                                  transition: 'all 0.2s',
+                                  borderBottom: '1px solid #f5f5f5',
+                                  ...(mode === 'interleaved' && {
+                                    borderBottom: 'none',
+                                    borderBottomLeftRadius: '4px',
+                                    borderBottomRightRadius: '4px'
+                                  }),
+                                  ...(mode === 'questions' && {
+                                    borderTopLeftRadius: '4px',
+                                    borderTopRightRadius: '4px'
+                                  })
+                                }}
+                                onMouseEnter={(e) => {
+                                  e.currentTarget.style.backgroundColor = '#f2f2f3';
+                                }}
+                                onMouseLeave={(e) => {
+                                  e.currentTarget.style.backgroundColor = 'transparent';
+                                }}
+                                onClick={() => {
+                                  setPdfMode(mode as 'questions' | 'answers' | 'interleaved');
+                                  document.getElementById('downloadDropdown')!.style.display = 'none';
+                                  handleDownloadSelected();
+                                }}
+                              >
+                                {label}
+                              </div>
+                            ))}
+                          </div>
                         </div>
-                        </div>
-                        <script dangerouslySetInnerHTML={{
-                          __html: `
-                            document.addEventListener('click', function(event) {
-                              const dropdown = document.getElementById('downloadDropdown');
-                              const button = event.target.closest('button');
+                      </div>
+                    </div>
+                    <script
+                      dangerouslySetInnerHTML={{
+                        __html: `
+                          document.addEventListener('click', function(event) {
+                            const dropdown = document.getElementById('downloadDropdown');
+                            const button = event.target.closest('button');
+                            if (dropdown) {
                               if (button && button.textContent.includes('Download')) {
                                 event.stopPropagation();
                                 dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
                               } else if (!event.target.closest('#downloadDropdown')) {
                                 dropdown.style.display = 'none';
                               }
-                            });
-                          `
-                        }} />
-                      </div>
-                    </div>
+                            }
+                          });
+                        `
+                      }}
+                    />
                     
                     <div style={{
                       backgroundColor: '#ffffff',
