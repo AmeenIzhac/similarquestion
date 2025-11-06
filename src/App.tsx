@@ -6,7 +6,7 @@ import emailjs from '@emailjs/browser';
 // Function to search Pinecone using REST API
 const searchPinecone = async (
   query: string, 
-  topK: number = 10, 
+  topK: number = 25, 
   levelFilter: 'all' | 'h' | 'f' = 'all',
   calculatorFilter: 'all' | 'calculator' | 'non-calculator' = 'all'
 ) => {
@@ -108,7 +108,7 @@ function App() {
   const [pdfMode, setPdfMode] = useState<'questions' | 'answers' | 'interleaved'>('questions');
   const [showWorksheet, setShowWorksheet] = useState<boolean>(false);
   const [showFilterPopup, setShowFilterPopup] = useState<boolean>(false);
-  const [numMatches, setNumMatches] = useState<number>(10);
+  const [numMatches, setNumMatches] = useState<number>(25);
   const [hasStarted, setHasStarted] = useState<boolean>(false);
   const [showCenterFilter, setShowCenterFilter] = useState<boolean>(false);
   const [showFeedbackForm, setShowFeedbackForm] = useState<boolean>(false);
@@ -358,14 +358,6 @@ function App() {
     }
   }, [processImageWithOCR]);
 
-  // Image paste listener DISABLED
-  // useEffect(() => {
-  //   document.addEventListener('paste', handlePaste);
-  //   return () => {
-  //     document.removeEventListener('paste', handlePaste);
-  //   };
-  // }, [handlePaste]);
-
   const nextMatch = () => {
     if (topMatches.length > 0) {
       setCurrentMatchIndex((prev) => (prev + 1) % topMatches.length);
@@ -609,34 +601,6 @@ function App() {
         {/* Sidebar Content */}
         {sidebarOpen && (
           <div style={{ padding: '15px', overflowY: 'auto' }}>
-
-            {/* Image upload section DISABLED
-            <div style={{ marginBottom: '20px' }}>
-              <h3 style={{ margin: '0 0 10px 0', fontSize: '14px', color: '#333' }}>Upload Image:</h3>
-              {imageUrl && (
-                <img 
-                  src={imageUrl} 
-                  alt="Uploaded" 
-                  style={{ maxWidth: '100%', height: 'auto', marginBottom: '10px', borderRadius: '4px' }} 
-                />
-              )}
-              <input 
-                type="file" 
-                accept="image/*" 
-                onChange={handleFileUpload}
-                style={{
-                  color: 'transparent',
-                  width: '100%',
-                  marginBottom: '5px'
-                }}
-              />
-              <p style={{ fontSize: '11px', color: '#666', margin: 0 }}>
-                Or paste an image with Ctrl+V
-              </p>
-            </div>
-            */}
-
-            {/* Text search section removed from sidebar */}
             <div style={{ marginBottom: '20px' }}>
               {/* Intentionally left blank */}
               <button
@@ -658,7 +622,7 @@ function App() {
                   marginTop: '15px'
                 }}
               >
-                Filter Questions
+                Filters
               </button>
               <button
                 onClick={() => {
@@ -1414,15 +1378,40 @@ function App() {
                   </select>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <label style={{ fontSize: '13px', color: '#111', fontWeight: 600 }}>Number of Matches (max 30)</label>
+                  <label style={{ fontSize: '13px', color: '#111', fontWeight: 600 }}>Number of Matches (max 50)</label>
                   <input
                     type="number"
                     inputMode="numeric"
                     min={1}
-                    max={30}
+                    max={50}
                     value={numMatches as any}
-                    onChange={(e) => { const value = e.target.value; if (value === '') { setNumMatches('' as any); return; } const digits = value.replace(/\D/g, ''); if (digits) { const num = parseInt(digits, 10); if (num >= 1 && num <= 30) { setNumMatches(num); } } }}
-                    onBlur={(e) => { const value = e.target.value; if (value === '') { setNumMatches(10); } else { const num = parseInt(value, 10); if (isNaN(num) || num < 1) setNumMatches(1); else if (num > 30) setNumMatches(30); else setNumMatches(num); } }}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      if (value === '') {
+                        setNumMatches('' as any);
+                        return;
+                      }
+
+                      const digits = value.replace(/\D/g, '');
+                      if (digits) {
+                        const num = parseInt(digits, 10);
+                        if (num >= 1 && num <= 50) {
+                          setNumMatches(num);
+                        }
+                      }
+                    }}
+                    onBlur={(e) => {
+                      const value = e.target.value;
+                      if (value === '') {
+                        setNumMatches(25);
+                        return;
+                      }
+
+                      const num = parseInt(value, 10);
+                      if (isNaN(num) || num < 1) setNumMatches(1);
+                      else if (num > 50) setNumMatches(50);
+                      else setNumMatches(num);
+                    }}
                     style={{ padding: '10px 12px', border: '1px solid #e5e5e5', borderRadius: '8px', fontSize: '14px' }}
                   />
                 </div>
