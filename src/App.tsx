@@ -710,7 +710,7 @@ function App() {
                   </div>
                   <textarea
                     name="message"
-                    placeholder="How can we help?"
+                    placeholder="What needs fixing?"
                     value={formData.message}
                     onChange={handleInputChange}
                     rows={3}
