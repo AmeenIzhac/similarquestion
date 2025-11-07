@@ -98,7 +98,11 @@ function App() {
   const [email, setEmail] = useState<string>('');
   const [emailSubmitted, setEmailSubmitted] = useState<boolean>(false);
   const [emailError, setEmailError] = useState<string>('');
-  const [sidebarOpen, setSidebarOpen] = useState<boolean>(true);
+  const [sidebarOpen, setSidebarOpen] = useState<boolean>(false);
+  const [isMobile, setIsMobile] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    return window.innerWidth <= 768;
+  });
   const [showMarkScheme, setShowMarkScheme] = useState<boolean>(false);
   const [levelFilter, setLevelFilter] = useState<'all' | 'h' | 'f'>('all');
   const [calculatorFilter, setCalculatorFilter] = useState<'all' | 'calculator' | 'non-calculator'>('all');
@@ -123,6 +127,14 @@ function App() {
     isError: false,
     message: ''
   });
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const EMAILJS_SERVICE_ID = import.meta.env.VITE_EMAILJS_SERVICE_ID || 'service_oek5h8g';
   const EMAILJS_TEMPLATE_ID = import.meta.env.VITE_EMAILJS_TEMPLATE_ID || 'template_1zfstkg';
@@ -546,13 +558,14 @@ function App() {
     }
   };
 
-  const sidebarWidth = sidebarOpen ? 300 : 50;
+  const openSidebarWidth = isMobile ? 220 : 300;
+  const sidebarWidth = sidebarOpen ? openSidebarWidth : 50;
 
   return (
     <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', backgroundColor: '#f7f7f8' }}>
       {/* Sidebar */}
       <div style={{
-        width: sidebarOpen ? '300px' : '50px',
+        width: sidebarOpen ? `${openSidebarWidth}px` : '50px',
         minHeight: '100vh',
         backgroundColor: '#ffffff',
         borderRight: '1px solid #e5e5e5',
@@ -1131,7 +1144,7 @@ function App() {
                     padding: '10px 12px',
                     border: 'none',
                     outline: 'none',
-                    fontSize: '16px',
+                    fontSize: isMobile ? '14px' : '16px',
                     resize: 'none',
                     boxSizing: 'border-box',
                     background: 'transparent',
@@ -1325,7 +1338,7 @@ function App() {
                     }}
                     placeholder="Describe the question of your dreams"
                     rows={1}
-                    style={{ flex: 1, height: 'auto', minHeight: '44px', padding: '10px 12px', border: 'none', outline: 'none', fontSize: '16px', resize: 'none', boxSizing: 'border-box', background: 'transparent', overflow: 'hidden' }}
+                    style={{ flex: 1, height: 'auto', minHeight: '44px', padding: '10px 12px', border: 'none', outline: 'none', fontSize: isMobile ? '14px' : '16px', resize: 'none', boxSizing: 'border-box', background: 'transparent', overflow: 'hidden' }}
                   />
                 </div>
               </form>
