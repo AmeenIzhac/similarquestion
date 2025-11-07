@@ -1142,7 +1142,7 @@ function App() {
               </form>
             </div>
             <div style={{ position: 'absolute', bottom: '16px', left: 0, right: 0, textAlign: 'center', color: '#8e8ea0', fontSize: '11px' }}>
-              Find Similar GCSE Maths Questions 2025.
+              Similar Question 2025.
             </div>
           </div>
         )}
