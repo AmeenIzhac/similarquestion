@@ -1114,7 +1114,7 @@ function App() {
           <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
             <div style={{ width: '100%', maxWidth: '760px', margin: '0 auto', padding: '24px' }}>
               <div style={{ textAlign: 'center', marginBottom: '18px' }}>
-                <h1 style={{ margin: 0, fontSize: '28px', fontWeight: 600, color: '#111' }}>Find Similar GCSE Maths Questions</h1>
+                <h1 style={{ margin: 0, fontSize: '28px', fontWeight: 600, color: '#111' }}>Find Similar Edexcel GCSE Maths Questions</h1>
               </div>
               <form onSubmit={handleTextSearch} style={{ backgroundColor: '#ffffff', border: '1px solid #e5e5e5', borderRadius: '9999px', padding: '6px 12px', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
