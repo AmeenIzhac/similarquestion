@@ -98,7 +98,7 @@ function App() {
   const [email, setEmail] = useState<string>('');
   const [emailSubmitted, setEmailSubmitted] = useState<boolean>(false);
   const [emailError, setEmailError] = useState<string>('');
-  const [sidebarOpen, setSidebarOpen] = useState<boolean>(false);
+  const [sidebarOpen, setSidebarOpen] = useState<boolean>(true);
   const [isMobile, setIsMobile] = useState<boolean>(() => {
     if (typeof window === 'undefined') return false;
     return window.innerWidth <= 768;
@@ -187,10 +187,10 @@ function App() {
 
     try {
       const templateParams = {
-        from_name: 'Website Visitor',
+        // from_name: 'Website Visitor',
         from_email: formData.email || 'Not provided',
         message: formData.message,
-        to_email: 'start@oasissummerschool.com' // Your email address
+        to_email: 'ameenizhac@gmail.com' // Your email address
       };
 
       await emailjs.send(
