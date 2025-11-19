@@ -1,14 +1,15 @@
-import React, { useState, useCallback, useEffect, useMemo } from 'react';
+import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { Mistral } from '@mistralai/mistralai';
 import jsPDF from 'jspdf';
 import emailjs from '@emailjs/browser';
 
 // Function to search Pinecone using REST API
 const searchPinecone = async (
-  query: string, 
-  topK: number = 25, 
+  query: string,
+  topK: number = 25,
   levelFilter: 'all' | 'h' | 'f' = 'all',
-  calculatorFilter: 'all' | 'calculator' | 'non-calculator' = 'all'
+  calculatorFilter: 'all' | 'calculator' | 'non-calculator' = 'all',
+  searchMethod: 'method1' | 'method2' = 'method1'
 ) => {
   try {
     const pineconeApiKey = import.meta.env.VITE_PINECONE_API_KEY;
@@ -16,8 +17,15 @@ const searchPinecone = async (
     const indexHost2 = import.meta.env.VITE_PINECONE_INDEX_HOST2;
     const namespace = import.meta.env.VITE_PINECONE_NAMESPACE || 'example-namespace';
     
-    if (!pineconeApiKey || !indexHost2) {
-      console.error('Pinecone API key or index host not configured');
+    if (!pineconeApiKey) {
+      console.error('Pinecone API key not configured');
+      return null;
+    }
+
+    const selectedHost = searchMethod === 'method2' ? indexHost2 : indexHost1;
+
+    if (!selectedHost) {
+      console.error(`Pinecone index host not configured for ${searchMethod}`);
       return null;
     }
 
@@ -37,7 +45,7 @@ const searchPinecone = async (
     // If no filters applied, set to undefined
     const finalFilter = Object.keys(filter).length === 0 ? undefined : filter;
 
-    const response = await fetch(`https://${indexHost2}/records/namespaces/${namespace}/search`, {
+    const response = await fetch(`https://${selectedHost}/records/namespaces/${namespace}/search`, {
       method: 'POST',
       headers: {
         'Accept': 'application/json',
@@ -88,6 +96,12 @@ const formatLabelId = (labelId: string | undefined) => {
   return `${year} ${month} ${level} • ${paper} • ${question}`;
 };
 
+const getDocumentBaseFromLabel = (labelId: string | undefined) => {
+  if (!labelId) return null;
+  const withoutExtension = labelId.replace(/\.[^/.]+$/, '');
+  return withoutExtension.replace(/-q\d+$/i, '');
+};
+
 function App() {
   const [imageUrl, setImageUrl] = useState<string>('');
   const [client, setClient] = useState<Mistral | null>(null);
@@ -103,7 +117,7 @@ function App() {
     if (typeof window === 'undefined') return false;
     return window.innerWidth <= 768;
   });
-  const [showMarkScheme, setShowMarkScheme] = useState<boolean>(false);
+  const [viewMode, setViewMode] = useState<'question' | 'paper' | 'markscheme'>('question');
   const [levelFilter, setLevelFilter] = useState<'all' | 'h' | 'f'>('all');
   const [calculatorFilter, setCalculatorFilter] = useState<'all' | 'calculator' | 'non-calculator'>('all');
   const [selectedQuestions, setSelectedQuestions] = useState<string[]>([]);
@@ -116,6 +130,11 @@ function App() {
   const [hasStarted, setHasStarted] = useState<boolean>(false);
   const [showCenterFilter, setShowCenterFilter] = useState<boolean>(false);
   const [showFeedbackForm, setShowFeedbackForm] = useState<boolean>(false);
+  const [pdfMenuOpen, setPdfMenuOpen] = useState<boolean>(false);
+  const [searchMethod, setSearchMethod] = useState<'method1' | 'method2'>('method1');
+  const hasSearchMethod2 = Boolean(import.meta.env.VITE_PINECONE_INDEX_HOST2);
+
+  const pdfMenuRef = useRef<HTMLDivElement | null>(null);
 
   const [formData, setFormData] = useState({
     email: '',
@@ -135,6 +154,17 @@ function App() {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  useEffect(() => {
+    if (!pdfMenuOpen) return;
+    const handleMouseDown = (event: MouseEvent) => {
+      if (pdfMenuRef.current && !pdfMenuRef.current.contains(event.target as Node)) {
+        setPdfMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleMouseDown);
+    return () => document.removeEventListener('mousedown', handleMouseDown);
+  }, [pdfMenuOpen]);
 
   const EMAILJS_SERVICE_ID = import.meta.env.VITE_EMAILJS_SERVICE_ID || 'service_oek5h8g';
   const EMAILJS_TEMPLATE_ID = import.meta.env.VITE_EMAILJS_TEMPLATE_ID || 'template_1zfstkg';
@@ -300,7 +330,7 @@ function App() {
       const extractedText = ocrResponse.pages?.[0]?.markdown || 'No text found';
       
       // Find similar questions using Pinecone with extracted text
-      const pineconeResults = await searchPinecone(extractedText, numMatches, levelFilter, calculatorFilter);
+      const pineconeResults = await searchPinecone(extractedText, numMatches, levelFilter, calculatorFilter, searchMethod);
       
       if (pineconeResults && pineconeResults.result && pineconeResults.result.hits) {
         const matches = pineconeResults.result.hits.map((hit: any) => ({
@@ -331,7 +361,7 @@ function App() {
     } finally {
       setIsProcessing(false);
     }
-  }, [client, levelFilter, calculatorFilter, numMatches]);
+  }, [client, levelFilter, calculatorFilter, numMatches, searchMethod]);
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -383,6 +413,15 @@ function App() {
   };
 
   const currentMatch = topMatches[currentMatchIndex];
+
+  useEffect(() => {
+    setViewMode('question');
+    setPdfMenuOpen(false);
+  }, [currentMatch?.labelId]);
+
+  const documentBase = useMemo(() => getDocumentBaseFromLabel(currentMatch?.labelId), [currentMatch?.labelId]);
+  const paperPdfUrl = documentBase ? `/edexcel-gcse-maths-papers/${documentBase}.pdf` : null;
+  const markschemePdfUrl = documentBase ? `/edexcel-gcse-maths-markschemes/${documentBase}.pdf` : null;
 
   const isCurrentSelected = useMemo(() => {
     if (!currentMatch || currentMatch.labelId === 'error') return false;
@@ -517,7 +556,7 @@ function App() {
     setIsProcessing(true);
     try {
       // Try Pinecone first
-      const pineconeResults = await searchPinecone(text, numMatches, levelFilter, calculatorFilter);
+      const pineconeResults = await searchPinecone(text, numMatches, levelFilter, calculatorFilter, searchMethod);
       
       if (pineconeResults && pineconeResults.result && pineconeResults.result.hits) {
         const matches = pineconeResults.result.hits.map((hit: any) => ({
@@ -548,7 +587,7 @@ function App() {
     } finally {
       setIsProcessing(false);
     }
-  }, [levelFilter, calculatorFilter, numMatches]);
+  }, [levelFilter, calculatorFilter, numMatches, searchMethod]);
 
   const handleTextSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -559,7 +598,6 @@ function App() {
   };
 
   const openSidebarWidth = isMobile ? 220 : 300;
-  const sidebarWidth = sidebarOpen ? openSidebarWidth : 50;
 
   return (
     <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', backgroundColor: '#f7f7f8' }}>
@@ -1175,6 +1213,107 @@ function App() {
                 {formatLabelId(currentMatch.labelId)}
               </span>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div ref={pdfMenuRef} style={{ position: 'relative' }}>
+                  <button
+                    onClick={() => setPdfMenuOpen((prev) => !prev)}
+                    style={{
+                      padding: '6px 10px',
+                      backgroundColor: viewMode === 'question' ? '#f2f2f3' : '#10a37f',
+                      color: viewMode === 'question' ? '#111' : '#fff',
+                      border: '1px solid #e5e5e5',
+                      borderRadius: '4px',
+                      cursor: 'pointer',
+                      fontSize: '11px',
+                      fontWeight: 600,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px'
+                    }}
+                  >
+                    {viewMode === 'question' ? 'View paper/markscheme' : viewMode === 'paper' ? 'Showing paper PDF' : 'Showing markscheme PDF'}
+                    <span style={{ fontSize: '10px' }}>▼</span>
+                  </button>
+                  {pdfMenuOpen && (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        top: 'calc(100% + 6px)',
+                        right: 0,
+                        backgroundColor: '#ffffff',
+                        border: '1px solid #e5e5e5',
+                        borderRadius: '6px',
+                        boxShadow: '0 8px 16px rgba(0,0,0,0.12)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        minWidth: '200px',
+                        zIndex: 20
+                      }}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setViewMode('question');
+                          setPdfMenuOpen(false);
+                        }}
+                        style={{
+                          padding: '10px 14px',
+                          background: 'transparent',
+                          border: 'none',
+                          borderBottom: '1px solid #f2f2f3',
+                          fontSize: '12px',
+                          textAlign: 'left',
+                          cursor: 'pointer',
+                          color: '#111'
+                        }}
+                      >
+                        Show question image
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (paperPdfUrl) {
+                            setViewMode('paper');
+                            setPdfMenuOpen(false);
+                          }
+                        }}
+                        disabled={!paperPdfUrl}
+                        style={{
+                          padding: '10px 14px',
+                          background: 'transparent',
+                          border: 'none',
+                          borderBottom: '1px solid #f2f2f3',
+                          fontSize: '12px',
+                          textAlign: 'left',
+                          cursor: paperPdfUrl ? 'pointer' : 'not-allowed',
+                          color: paperPdfUrl ? '#111' : '#9ca3af'
+                        }}
+                      >
+                        View full paper PDF
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (markschemePdfUrl) {
+                            setViewMode('markscheme');
+                            setPdfMenuOpen(false);
+                          }
+                        }}
+                        disabled={!markschemePdfUrl}
+                        style={{
+                          padding: '10px 14px',
+                          background: 'transparent',
+                          border: 'none',
+                          fontSize: '12px',
+                          textAlign: 'left',
+                          cursor: markschemePdfUrl ? 'pointer' : 'not-allowed',
+                          color: markschemePdfUrl ? '#111' : '#9ca3af'
+                        }}
+                      >
+                        View full markscheme PDF
+                      </button>
+                    </div>
+                  )}
+                </div>
                 <span style={{ fontSize: '11px', color: '#555' }}>
                   Match {currentMatchIndex + 1} of {topMatches.length}
                 </span>
@@ -1216,58 +1355,28 @@ function App() {
               boxSizing: 'border-box',
               overflowY: 'auto'
             }}>
-              <img
-                src={`/edexcel-gcse-maths-questions/${currentMatch.labelId}`}
-                alt={currentMatch.labelId}
-                style={{
-                  width: '100%',
-                  height: 'auto',
-                  display: 'block'
-                }}
-              />
-            </div>
-            <button
-              onClick={() => setShowMarkScheme((prev) => !prev)}
-              style={{
-                position: 'fixed',
-                bottom: '20px',
-                left: `${sidebarWidth + 20}px`,
-                padding: '10px 14px',
-                backgroundColor: showMarkScheme ? '#6b7280' : '#10a37f',
-                color: '#fff',
-                border: '1px solid',
-                borderColor: showMarkScheme ? '#6b7280' : '#10a37f',
-                borderRadius: '9999px',
-                cursor: 'pointer',
-                fontSize: '13px',
-                fontWeight: 600,
-                boxShadow: '0 2px 4px rgba(0, 0, 0, 0.15)',
-                zIndex: 10
-              }}
-            >
-              {showMarkScheme ? 'Hide mark scheme' : 'Show mark scheme'}
-            </button>
-            {showMarkScheme && (
-              <div style={{
-                flex: 1,
-                padding: '20px 20px 96px 20px',
-                boxSizing: 'border-box',
-                borderTop: '1px solid #e5e5e5',
-                backgroundColor: '#ffffff',
-                overflowY: 'auto'
-              }}>
+              {viewMode === 'question' ? (
                 <img
-                  src={`/edexcel-gcse-maths-answers/${currentMatch.labelId}`}
-                  alt={`${currentMatch.labelId} mark scheme`}
+                  src={`/edexcel-gcse-maths-questions/${currentMatch.labelId}`}
+                  alt={currentMatch.labelId}
                   style={{
                     width: '100%',
                     height: 'auto',
                     display: 'block'
                   }}
                 />
-                <div style={{ height: '120px' }} />
-              </div>
-            )}
+              ) : (
+                <iframe
+                  src={viewMode === 'paper' ? paperPdfUrl ?? undefined : markschemePdfUrl ?? undefined}
+                  title={viewMode === 'paper' ? `${currentMatch.labelId} full paper` : `${currentMatch.labelId} markscheme`}
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    border: 'none'
+                  }}
+                />
+              )}
+            </div>
           </>
         )}
 
@@ -1427,6 +1536,22 @@ function App() {
                     }}
                     style={{ padding: '10px 12px', border: '1px solid #e5e5e5', borderRadius: '8px', fontSize: '14px' }}
                   />
+                </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <label style={{ fontSize: '13px', color: '#111', fontWeight: 600 }}>Search Method</label>
+                  <select
+                    value={searchMethod}
+                    onChange={(e) => setSearchMethod(e.target.value as 'method1' | 'method2')}
+                    style={{ padding: '10px 12px', border: '1px solid #e5e5e5', borderRadius: '8px', fontSize: '14px', background: '#fff' }}
+                  >
+                    <option value="method1">Method 1 (Host 1)</option>
+                    <option value="method2" disabled={!hasSearchMethod2}>Method 2 (Host 2)</option>
+                  </select>
+                  {!hasSearchMethod2 && (
+                    <span style={{ fontSize: '11px', color: '#6b7280' }}>
+                      Method 2 requires Host 2 configuration.
+                    </span>
+                  )}
                 </div>
                 <div style={{ display: 'flex', gap: '10px', marginTop: '6px' }}>
                   <button
