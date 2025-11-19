@@ -597,6 +597,13 @@ function App() {
     }
   };
 
+  const handleApplyFilters = useCallback(() => {
+    setShowCenterFilter(false);
+    if (hasStarted && searchText.trim()) {
+      searchByText(searchText);
+    }
+  }, [hasStarted, searchText, searchByText]);
+
   const openSidebarWidth = isMobile ? 220 : 300;
 
   return (
@@ -1563,7 +1570,7 @@ function App() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => setShowCenterFilter(false)}
+                    onClick={handleApplyFilters}
                     style={{ flex: 1, height: '40px', padding: '0 12px', background: '#10a37f', color: '#fff', border: '1px solid #109e7b', borderRadius: '8px', fontSize: '14px', fontWeight: 600, cursor: 'pointer' }}
                   >
                     Apply
