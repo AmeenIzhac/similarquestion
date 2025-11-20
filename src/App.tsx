@@ -131,6 +131,7 @@ function App() {
   const [showCenterFilter, setShowCenterFilter] = useState<boolean>(false);
   const [showFeedbackForm, setShowFeedbackForm] = useState<boolean>(false);
   const [pdfMenuOpen, setPdfMenuOpen] = useState<boolean>(false);
+  const [showMarkscheme, setShowMarkscheme] = useState<boolean>(false);
   const [searchMethod, setSearchMethod] = useState<'method1' | 'method2'>('method1');
   const hasSearchMethod2 = Boolean(import.meta.env.VITE_PINECONE_INDEX_HOST2);
 
@@ -417,7 +418,14 @@ function App() {
   useEffect(() => {
     setViewMode('question');
     setPdfMenuOpen(false);
+    setShowMarkscheme(false);
   }, [currentMatch?.labelId]);
+
+  useEffect(() => {
+    if (viewMode !== 'question') {
+      setShowMarkscheme(false);
+    }
+  }, [viewMode]);
 
   const documentBase = useMemo(() => getDocumentBaseFromLabel(currentMatch?.labelId), [currentMatch?.labelId]);
   const paperPdfUrl = documentBase ? `/edexcel-gcse-maths-papers/${documentBase}.pdf` : null;
@@ -1360,28 +1368,64 @@ function App() {
               flex: 1,
               padding: '0px',
               boxSizing: 'border-box',
-              overflowY: 'auto'
+              overflow: 'hidden',
+              display: 'flex',
+              flexDirection: 'column'
             }}>
               {viewMode === 'question' ? (
-                <img
-                  src={`/edexcel-gcse-maths-questions/${currentMatch.labelId}`}
-                  alt={currentMatch.labelId}
-                  style={{
-                    width: '100%',
-                    height: 'auto',
-                    display: 'block'
-                  }}
-                />
+                <div style={{
+                  flex: 1,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  height: '100%'
+                }}>
+                  <div style={{
+                    flex: 1,
+                    overflowY: 'auto',
+                    minHeight: 0,
+                    borderRadius: '6px'
+                  }}>
+                    <img
+                      src={`/edexcel-gcse-maths-questions/${currentMatch.labelId}`}
+                      alt={currentMatch.labelId}
+                      style={{
+                        width: '100%',
+                        height: 'auto',
+                        display: 'block'
+                      }}
+                    />
+                  </div>
+                  {showMarkscheme && (
+                    <div style={{
+                      flex: 1,
+                      overflowY: 'auto',
+                      minHeight: 0,
+                      borderRadius: '6px'
+                    }}>
+                      <img
+                        src={`/edexcel-gcse-maths-answers/${currentMatch.labelId}`}
+                        alt={`Markscheme for ${currentMatch.labelId}`}
+                        style={{
+                          width: '100%',
+                          height: 'auto',
+                          display: 'block'
+                        }}
+                      />
+                    </div>
+                  )}
+                </div>
               ) : (
-                <iframe
-                  src={viewMode === 'paper' ? paperPdfUrl ?? undefined : markschemePdfUrl ?? undefined}
-                  title={viewMode === 'paper' ? `${currentMatch.labelId} full paper` : `${currentMatch.labelId} markscheme`}
-                  style={{
-                    width: '100%',
-                    height: '100%',
-                    border: 'none'
-                  }}
-                />
+                <div style={{ flex: 1, overflow: 'hidden', display: 'flex' }}>
+                  <iframe
+                    src={viewMode === 'paper' ? paperPdfUrl ?? undefined : markschemePdfUrl ?? undefined}
+                    title={viewMode === 'paper' ? `${currentMatch.labelId} full paper` : `${currentMatch.labelId} markscheme`}
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      border: 'none'
+                    }}
+                  />
+                </div>
               )}
             </div>
           </>
@@ -1432,9 +1476,29 @@ function App() {
         )}
 
         {hasStarted && !isProcessing && (
-          <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '16px 0', background: 'linear-gradient(180deg, rgba(247,247,248,0) 0%, rgba(247,247,248,1) 40%)' }}>
-            <div style={{ width: '100%', maxWidth: '800px', margin: '0 auto', padding: '0 24px' }}>
-              <form onSubmit={handleTextSearch} style={{ backgroundColor: '#ffffff', border: '1px solid #e5e5e5', borderRadius: '9999px', padding: '6px 12px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+          <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '16px 0' }}>
+            <div style={{ width: '100%', maxWidth: '800px', margin: '0 auto', padding: '0 24px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+              {viewMode === 'question' && currentMatch && currentMatch.labelId !== 'error' && (
+                <button
+                  type="button"
+                  onClick={() => setShowMarkscheme((prev) => !prev)}
+                  style={{
+                    padding: '10px 16px',
+                    backgroundColor: '#10a37f',
+                    color: '#fff',
+                    border: '1px solid #109e7b',
+                    borderRadius: '9999px',
+                    fontSize: '13px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                    marginLeft: '-24px'
+                  }}
+                >
+                  {showMarkscheme ? 'Hide markscheme' : 'View markscheme'}
+                </button>
+              )}
+              <form onSubmit={handleTextSearch} style={{ flex: 1, backgroundColor: '#ffffff', border: '1px solid #e5e5e5', borderRadius: '9999px', padding: '6px 12px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <textarea
                     value={searchText}
