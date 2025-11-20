@@ -1142,13 +1142,6 @@ function App() {
               </div>
             )}
 
-            {/* OCR Results */}
-            {isProcessing && (
-              <p style={{ fontSize: '12px', color: '#007bff', marginBottom: '15px' }}>
-                Processing...
-              </p>
-            )}
-
           </div>
         )}
       </div>
@@ -1615,8 +1608,8 @@ function App() {
                     onChange={(e) => setSearchMethod(e.target.value as 'method1' | 'method2')}
                     style={{ padding: '10px 12px', border: '1px solid #e5e5e5', borderRadius: '8px', fontSize: '14px', background: '#fff' }}
                   >
-                    <option value="method1">Method 1 (Host 1)</option>
-                    <option value="method2" disabled={!hasSearchMethod2}>Method 2 (Host 2)</option>
+                    <option value="method1">Method 1</option>
+                    <option value="method2" disabled={!hasSearchMethod2}>Method 2</option>
                   </select>
                   {!hasSearchMethod2 && (
                     <span style={{ fontSize: '11px', color: '#6b7280' }}>
