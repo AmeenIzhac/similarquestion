@@ -1393,7 +1393,7 @@ function App() {
                       flex: 1,
                       overflowY: 'auto',
                       minHeight: 0,
-                      borderRadius: '6px'
+                      paddingBottom: '150px'
                     }}>
                       <img
                         src={`/edexcel-gcse-maths-answers/${currentMatch.labelId}`}
