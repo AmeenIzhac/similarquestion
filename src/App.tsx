@@ -135,6 +135,18 @@ function App() {
   const [searchMethod, setSearchMethod] = useState<'method1' | 'method2'>('method1');
   const hasSearchMethod2 = Boolean(import.meta.env.VITE_PINECONE_INDEX_HOST2);
 
+  // Annotation state
+  const [annotationMode, setAnnotationMode] = useState<'none' | 'pen' | 'text'>('none');
+  const [questionDrawings, setQuestionDrawings] = useState<Map<string, { paths: Array<{ points: Array<{ x: number; y: number }>; color: string }>; texts: Array<{ x: number; y: number; text: string; color: string }> }>>(new Map());
+  const [isDrawing, setIsDrawing] = useState(false);
+  const [currentPath, setCurrentPath] = useState<Array<{ x: number; y: number }>>([]);
+  const [textInputPos, setTextInputPos] = useState<{ x: number; y: number; canvasX: number; canvasY: number; target: 'question' | 'markscheme' } | null>(null);
+  const [textInputValue, setTextInputValue] = useState('');
+  const questionCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const markschemeCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const questionContainerRef = useRef<HTMLDivElement | null>(null);
+  const markschemeContainerRef = useRef<HTMLDivElement | null>(null);
+
   const pdfMenuRef = useRef<HTMLDivElement | null>(null);
 
   const [formData, setFormData] = useState({
@@ -419,7 +431,183 @@ function App() {
     setViewMode('question');
     setPdfMenuOpen(false);
     setShowMarkscheme(false);
+    setAnnotationMode('none');
+    setTextInputPos(null);
   }, [currentMatch?.labelId]);
+
+  // Redraw canvas when drawings change or canvas resizes
+  const redrawCanvas = useCallback((canvas: HTMLCanvasElement | null, labelId: string, target: 'question' | 'markscheme') => {
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    
+    const key = `${labelId}-${target}`;
+    const data = questionDrawings.get(key);
+    
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    if (data) {
+      // Draw paths
+      data.paths.forEach(path => {
+        if (path.points.length < 2) return;
+        ctx.beginPath();
+        ctx.strokeStyle = path.color;
+        ctx.lineWidth = 3;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.moveTo(path.points[0].x, path.points[0].y);
+        path.points.forEach(point => ctx.lineTo(point.x, point.y));
+        ctx.stroke();
+      });
+      
+      // Draw texts
+      data.texts.forEach(t => {
+        ctx.font = 'bold 24px Arial';
+        ctx.fillStyle = t.color;
+        ctx.fillText(t.text, t.x, t.y);
+      });
+    }
+  }, [questionDrawings]);
+
+  // Resize canvas to match container
+  const resizeCanvas = useCallback((canvas: HTMLCanvasElement | null, container: HTMLDivElement | null) => {
+    if (!canvas || !container) return;
+    const rect = container.getBoundingClientRect();
+    canvas.width = rect.width;
+    canvas.height = container.scrollHeight;
+  }, []);
+
+  useEffect(() => {
+    if (currentMatch && viewMode === 'question') {
+      const setupCanvas = () => {
+        resizeCanvas(questionCanvasRef.current, questionContainerRef.current);
+        redrawCanvas(questionCanvasRef.current, currentMatch.labelId, 'question');
+        if (showMarkscheme) {
+          resizeCanvas(markschemeCanvasRef.current, markschemeContainerRef.current);
+          redrawCanvas(markschemeCanvasRef.current, currentMatch.labelId, 'markscheme');
+        }
+      };
+      // Delay to allow images to load
+      setTimeout(setupCanvas, 100);
+      window.addEventListener('resize', setupCanvas);
+      return () => window.removeEventListener('resize', setupCanvas);
+    }
+  }, [currentMatch, viewMode, showMarkscheme, resizeCanvas, redrawCanvas]);
+
+  const getCanvasCoords = (e: React.MouseEvent<HTMLCanvasElement>, canvas: HTMLCanvasElement) => {
+    const rect = canvas.getBoundingClientRect();
+    // Scale coords to match canvas internal resolution vs displayed size
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    return {
+      x: (e.clientX - rect.left) * scaleX,
+      y: (e.clientY - rect.top) * scaleY
+    };
+  };
+
+  const handleCanvasMouseDown = (e: React.MouseEvent<HTMLCanvasElement>, target: 'question' | 'markscheme') => {
+    if (!currentMatch || annotationMode === 'none') return;
+    const canvas = target === 'question' ? questionCanvasRef.current : markschemeCanvasRef.current;
+    if (!canvas) return;
+    
+    const coords = getCanvasCoords(e, canvas);
+    
+    if (annotationMode === 'pen') {
+      setIsDrawing(true);
+      setCurrentPath([coords]);
+    } else if (annotationMode === 'text') {
+      // Use unscaled coords for CSS positioning of input box
+      const rect = canvas.getBoundingClientRect();
+      const displayX = e.clientX - rect.left;
+      const displayY = e.clientY - rect.top;
+      setTextInputPos({ x: displayX, y: displayY, canvasX: coords.x, canvasY: coords.y, target });
+      setTextInputValue('');
+    }
+  };
+
+  const handleCanvasMouseMove = (e: React.MouseEvent<HTMLCanvasElement>, target: 'question' | 'markscheme') => {
+    if (!isDrawing || annotationMode !== 'pen' || !currentMatch) return;
+    const canvas = target === 'question' ? questionCanvasRef.current : markschemeCanvasRef.current;
+    if (!canvas) return;
+    
+    const coords = getCanvasCoords(e, canvas);
+    setCurrentPath(prev => [...prev, coords]);
+    
+    // Draw current stroke
+    const ctx = canvas.getContext('2d');
+    if (ctx && currentPath.length > 0) {
+      ctx.beginPath();
+      ctx.strokeStyle = '#ef4444';
+      ctx.lineWidth = 3;
+      ctx.lineCap = 'round';
+      const lastPoint = currentPath[currentPath.length - 1];
+      ctx.moveTo(lastPoint.x, lastPoint.y);
+      ctx.lineTo(coords.x, coords.y);
+      ctx.stroke();
+    }
+  };
+
+  const handleCanvasMouseUp = (target: 'question' | 'markscheme') => {
+    if (!isDrawing || !currentMatch || currentPath.length < 2) {
+      setIsDrawing(false);
+      setCurrentPath([]);
+      return;
+    }
+    
+    const key = `${currentMatch.labelId}-${target}`;
+    setQuestionDrawings(prev => {
+      const newMap = new Map(prev);
+      const existing = newMap.get(key) || { paths: [], texts: [] };
+      newMap.set(key, {
+        ...existing,
+        paths: [...existing.paths, { points: currentPath, color: '#ef4444' }]
+      });
+      return newMap;
+    });
+    
+    setIsDrawing(false);
+    setCurrentPath([]);
+  };
+
+  const handleTextSubmit = () => {
+    if (!textInputPos || !textInputValue.trim() || !currentMatch) return;
+    
+    const key = `${currentMatch.labelId}-${textInputPos.target}`;
+    setQuestionDrawings(prev => {
+      const newMap = new Map(prev);
+      const existing = newMap.get(key) || { paths: [], texts: [] };
+      newMap.set(key, {
+        ...existing,
+        texts: [...existing.texts, { x: textInputPos.canvasX, y: textInputPos.canvasY, text: textInputValue, color: '#ef4444' }]
+      });
+      return newMap;
+    });
+    
+    // Redraw
+    const canvas = textInputPos.target === 'question' ? questionCanvasRef.current : markschemeCanvasRef.current;
+    redrawCanvas(canvas, currentMatch.labelId, textInputPos.target);
+    
+    setTextInputPos(null);
+    setTextInputValue('');
+  };
+
+  const clearAnnotations = () => {
+    if (!currentMatch) return;
+    setQuestionDrawings(prev => {
+      const newMap = new Map(prev);
+      newMap.delete(`${currentMatch.labelId}-question`);
+      newMap.delete(`${currentMatch.labelId}-markscheme`);
+      return newMap;
+    });
+    
+    // Clear canvases
+    [questionCanvasRef, markschemeCanvasRef].forEach(ref => {
+      if (ref.current) {
+        const ctx = ref.current.getContext('2d');
+        if (ctx) ctx.clearRect(0, 0, ref.current.width, ref.current.height);
+      }
+    });
+  };
 
   useEffect(() => {
     if (viewMode !== 'question') {
@@ -690,6 +878,89 @@ function App() {
               >
                 Filters
               </button>
+
+              {/* Annotation Tools */}
+              <div style={{
+                display: 'flex',
+                gap: '8px',
+                marginTop: '15px'
+              }}>
+                <button
+                  onClick={() => setAnnotationMode(annotationMode === 'pen' ? 'none' : 'pen')}
+                  style={{
+                    flex: 1,
+                    padding: '10px 16px',
+                    backgroundColor: annotationMode === 'pen' ? '#2563eb' : '#f2f2f3',
+                    color: annotationMode === 'pen' ? '#fff' : '#333',
+                    border: '1px solid',
+                    borderColor: annotationMode === 'pen' ? '#2563eb' : '#e5e5e5',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    fontWeight: 600,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px'
+                  }}
+                  title="Draw on question"
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 19l7-7 3 3-7 7-3-3z"></path>
+                    <path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"></path>
+                    <path d="M2 2l7.586 7.586"></path>
+                    <circle cx="11" cy="11" r="2"></circle>
+                  </svg>
+                  Pen
+                </button>
+                <button
+                  onClick={() => setAnnotationMode(annotationMode === 'text' ? 'none' : 'text')}
+                  style={{
+                    flex: 1,
+                    padding: '10px 16px',
+                    backgroundColor: annotationMode === 'text' ? '#2563eb' : '#f2f2f3',
+                    color: annotationMode === 'text' ? '#fff' : '#333',
+                    border: '1px solid',
+                    borderColor: annotationMode === 'text' ? '#2563eb' : '#e5e5e5',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    fontWeight: 600,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px'
+                  }}
+                  title="Add text annotation"
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="4 7 4 4 20 4 20 7"></polyline>
+                    <line x1="9" y1="20" x2="15" y2="20"></line>
+                    <line x1="12" y1="4" x2="12" y2="20"></line>
+                  </svg>
+                  Text
+                </button>
+              </div>
+              {annotationMode !== 'none' && (
+                <button
+                  onClick={clearAnnotations}
+                  style={{
+                    width: '100%',
+                    padding: '8px 16px',
+                    backgroundColor: '#ef4444',
+                    color: '#fff',
+                    border: '1px solid #ef4444',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    marginTop: '8px'
+                  }}
+                >
+                  Clear Annotations
+                </button>
+              )}
+
               <button
                 onClick={() => {
                   setShowWorksheet((prev) => {
@@ -1067,6 +1338,27 @@ function App() {
                   </div>
                 </div>
               )}
+
+              <div
+                style={{
+                  marginTop: '20px',
+                  padding: '12px',
+                  border: '1px solid #e5e5e5',
+                  borderRadius: '6px',
+                  backgroundColor: '#fff',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '10px'
+                }}
+              >
+                <h4 style={{ margin: 0, fontSize: '13px', color: '#333', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Recent Updates
+                </h4>
+                <ul style={{ margin: 0, paddingLeft: '18px', display: 'flex', flexDirection: 'column', gap: '6px', color: '#4b5563', fontSize: '12px', listStyleType: 'disc' }}>
+                  <li>Added spacing at the bottom of a question or markscheme answer when scrolling to the bottom</li>
+                  <li>Annotations</li>
+                </ul>
+              </div>
             </div>
 
             {false && (
@@ -1372,38 +1664,139 @@ function App() {
                   flexDirection: 'column',
                   height: '100%'
                 }}>
-                  <div style={{
-                    flex: 1,
-                    overflowY: 'auto',
-                    minHeight: 0,
-                    borderRadius: '6px'
-                  }}>
+                  <div 
+                    ref={questionContainerRef}
+                    style={{
+                      flex: 1,
+                      overflowY: 'auto',
+                      minHeight: 0,
+                      borderRadius: '6px',
+                      paddingBottom: '150px',
+                      position: 'relative'
+                    }}
+                  >
                     <img
                       src={`/edexcel-gcse-maths-questions/${currentMatch.labelId}`}
                       alt={currentMatch.labelId}
                       style={{
                         width: '100%',
                         height: 'auto',
-                        display: 'block'
+                        display: 'block',
+                        pointerEvents: annotationMode !== 'none' ? 'none' : 'auto'
                       }}
                     />
+                    <canvas
+                      ref={questionCanvasRef}
+                      onMouseDown={(e) => handleCanvasMouseDown(e, 'question')}
+                      onMouseMove={(e) => handleCanvasMouseMove(e, 'question')}
+                      onMouseUp={() => handleCanvasMouseUp('question')}
+                      onMouseLeave={() => handleCanvasMouseUp('question')}
+                      style={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        width: '100%',
+                        height: '100%',
+                        pointerEvents: annotationMode !== 'none' ? 'auto' : 'none',
+                        cursor: annotationMode === 'pen' ? 'crosshair' : annotationMode === 'text' ? 'text' : 'default'
+                      }}
+                    />
+                    {textInputPos && textInputPos.target === 'question' && (
+                      <div style={{
+                        position: 'absolute',
+                        left: textInputPos.x,
+                        top: textInputPos.y,
+                        zIndex: 10
+                      }}>
+                        <input
+                          type="text"
+                          value={textInputValue}
+                          onChange={(e) => setTextInputValue(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') handleTextSubmit();
+                            if (e.key === 'Escape') setTextInputPos(null);
+                          }}
+                          onBlur={handleTextSubmit}
+                          autoFocus
+                          style={{
+                            padding: '4px 8px',
+                            border: '2px solid #2563eb',
+                            borderRadius: '4px',
+                            fontSize: '14px',
+                            outline: 'none',
+                            minWidth: '100px'
+                          }}
+                          placeholder="Type and press Enter"
+                        />
+                      </div>
+                    )}
                   </div>
                   {showMarkscheme && (
-                    <div style={{
-                      flex: 1,
-                      overflowY: 'auto',
-                      minHeight: 0,
-                      paddingBottom: '150px'
-                    }}>
+                    <div 
+                      ref={markschemeContainerRef}
+                      style={{
+                        flex: 1,
+                        overflowY: 'auto',
+                        minHeight: 0,
+                        paddingBottom: '150px',
+                        position: 'relative'
+                      }}
+                    >
                       <img
                         src={`/edexcel-gcse-maths-answers/${currentMatch.labelId}`}
                         alt={`Markscheme for ${currentMatch.labelId}`}
                         style={{
                           width: '100%',
                           height: 'auto',
-                          display: 'block'
+                          display: 'block',
+                          pointerEvents: annotationMode !== 'none' ? 'none' : 'auto'
                         }}
                       />
+                      <canvas
+                        ref={markschemeCanvasRef}
+                        onMouseDown={(e) => handleCanvasMouseDown(e, 'markscheme')}
+                        onMouseMove={(e) => handleCanvasMouseMove(e, 'markscheme')}
+                        onMouseUp={() => handleCanvasMouseUp('markscheme')}
+                        onMouseLeave={() => handleCanvasMouseUp('markscheme')}
+                        style={{
+                          position: 'absolute',
+                          top: 0,
+                          left: 0,
+                          width: '100%',
+                          height: '100%',
+                          pointerEvents: annotationMode !== 'none' ? 'auto' : 'none',
+                          cursor: annotationMode === 'pen' ? 'crosshair' : annotationMode === 'text' ? 'text' : 'default'
+                        }}
+                      />
+                      {textInputPos && textInputPos.target === 'markscheme' && (
+                        <div style={{
+                          position: 'absolute',
+                          left: textInputPos.x,
+                          top: textInputPos.y,
+                          zIndex: 10
+                        }}>
+                          <input
+                            type="text"
+                            value={textInputValue}
+                            onChange={(e) => setTextInputValue(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') handleTextSubmit();
+                              if (e.key === 'Escape') setTextInputPos(null);
+                            }}
+                            onBlur={handleTextSubmit}
+                            autoFocus
+                            style={{
+                              padding: '4px 8px',
+                              border: '2px solid #2563eb',
+                              borderRadius: '4px',
+                              fontSize: '14px',
+                              outline: 'none',
+                              minWidth: '100px'
+                            }}
+                            placeholder="Type and press Enter"
+                          />
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
