@@ -182,8 +182,8 @@ export function Sidebar({
                 Recent Updates
               </h4>
               <ul style={{ margin: 0, paddingLeft: '18px', display: 'flex', flexDirection: 'column', gap: '6px', color: '#4b5563', fontSize: '12px', listStyleType: 'disc' }}>
-                <li>Added spacing at the bottom of a question or markscheme answer when scrolling to the bottom</li>
-                <li>Annotations</li>
+                <li>Added eraser and undo for annotations</li>
+                <li>Fixed bug not allowing drawing after scrolling the question</li>
               </ul>
             </div>
           </div>
