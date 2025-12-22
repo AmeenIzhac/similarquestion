@@ -29,12 +29,12 @@ export function FeedbackForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.message.trim()) {
+    if (!formData.message.trim() || !formData.email.trim()) {
       setFormStatus({
         isSubmitting: false,
         isSuccess: false,
         isError: true,
-        message: 'Please let us know how we can help.'
+        message: !formData.email.trim() ? 'Please provide your email address.' : 'Please let us know how we can help.'
       });
       return;
     }
@@ -58,7 +58,7 @@ export function FeedbackForm() {
 
     try {
       const templateParams = {
-        from_email: formData.email || 'Not provided',
+        from_email: formData.email,
         message: formData.message,
         to_email: 'ameenizhac@gmail.com'
       };
@@ -124,7 +124,8 @@ export function FeedbackForm() {
       <input
         type="email"
         name="email"
-        placeholder="Email (optional for a reply)"
+        placeholder="Email"
+        required
         value={formData.email}
         onChange={handleInputChange}
         style={{
@@ -136,7 +137,7 @@ export function FeedbackForm() {
         }}
       />
       <div style={{ fontSize: '11px', color: '#6b7280' }}>
-        Leave your email if you would like us to follow up.
+        Your email is needed to sometimes ask for clarification if feedback is not clear.
       </div>
       {formStatus.message && (
         <div
