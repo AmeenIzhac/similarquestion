@@ -6,3 +6,4 @@ export { QuestionViewer } from './QuestionViewer';
 export { WorksheetPanel } from './WorksheetPanel';
 export { FeedbackForm } from './FeedbackForm';
 export { AnnotationTools } from './AnnotationTools';
+export { ChatBot } from './ChatBot';

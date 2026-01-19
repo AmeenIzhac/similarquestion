@@ -28,6 +28,8 @@ interface QuestionViewerProps {
   onNextMatch: () => void;
   isCurrentSelected: boolean;
   onToggleSelection: () => void;
+  isChatOpen: boolean;
+  onToggleChat: () => void;
 }
 
 export function QuestionViewer({
@@ -55,7 +57,9 @@ export function QuestionViewer({
   onPrevMatch,
   onNextMatch,
   isCurrentSelected,
-  onToggleSelection
+  onToggleSelection,
+  isChatOpen,
+  onToggleChat
 }: QuestionViewerProps) {
   const pdfMenuRef = useRef<HTMLDivElement | null>(null);
   const [pdfMenuOpen, setPdfMenuOpen] = useState(false);
@@ -212,9 +216,26 @@ export function QuestionViewer({
           >
             {isCurrentSelected ? 'Remove from list' : 'Add to worksheet'}
           </button>
+          <button
+            onClick={onToggleChat}
+            style={{
+              padding: '6px 12px',
+              backgroundColor: '#10a37f',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              fontSize: '11px',
+              fontWeight: 600,
+              transition: 'all 0.2s',
+              opacity: isChatOpen ? 0.8 : 1
+            }}
+          >
+            {isChatOpen ? 'Close Help' : 'Get Help'}
+          </button>
         </div>
       </div>
-      
+
       <div style={{
         flex: 1,
         padding: '0px',
@@ -225,7 +246,7 @@ export function QuestionViewer({
       }}>
         {viewMode === 'question' ? (
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%' }}>
-            <div 
+            <div
               ref={questionContainerRef}
               style={{
                 flex: 1,
@@ -293,7 +314,7 @@ export function QuestionViewer({
               )}
             </div>
             {showMarkscheme && (
-              <div 
+              <div
                 ref={markschemeContainerRef}
                 style={{
                   flex: 1,
