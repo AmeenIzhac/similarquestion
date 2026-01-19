@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
-import { Sidebar, SearchBar, FilterModal, LoadingOverlay, QuestionViewer } from './components';
+import { Sidebar, SearchBar, FilterModal, LoadingOverlay, QuestionViewer, ChatBot } from './components';
 import { useAnnotations } from './hooks/useAnnotations';
 import { useSearch } from './hooks/useSearch';
 import type { LevelFilter, CalculatorFilter, SearchMethod, ViewMode } from './types/index';
@@ -22,6 +22,7 @@ function App() {
     if (typeof window === 'undefined') return false;
     return window.innerWidth <= 768;
   });
+  const [isChatOpen, setIsChatOpen] = useState<boolean>(false);
 
   // Search hook
   const {
@@ -134,7 +135,7 @@ function App() {
       />
 
       {/* Main Content Area */}
-      <div style={{ 
+      <div style={{
         flex: 1,
         position: 'relative',
         height: '100vh',
@@ -194,6 +195,19 @@ function App() {
             onNextMatch={nextMatch}
             isCurrentSelected={isCurrentSelected}
             onToggleSelection={toggleCurrentQuestionSelection}
+            isChatOpen={isChatOpen}
+            onToggleChat={() => setIsChatOpen(prev => !prev)}
+          />
+        )}
+
+        {/* ChatBot panel */}
+        {currentMatch && !isProcessing && currentMatch.labelId !== 'error' && (
+          <ChatBot
+            questionId={currentMatch.labelId}
+            questionText={currentMatch.text}
+            questionImageUrl={`/edexcel-gcse-maths-questions/${currentMatch.labelId}`}
+            isOpen={isChatOpen}
+            onClose={() => setIsChatOpen(false)}
           />
         )}
 
