@@ -93,12 +93,6 @@ export function ChatBot({ questionId, questionImageUrl, isOpen, onClose }: ChatB
         }
 
         try {
-            const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
-
-            if (!apiKey) {
-                throw new Error('OpenAI API key not configured');
-            }
-
             // Different prompts for step-by-step mode vs regular help
             let systemPrompt: string;
 
@@ -134,56 +128,41 @@ Your role is to:
 Format your response clearly.`;
             }
 
-            // Build the messages array with image for the first message
-            const apiMessages: Array<{ role: string; content: string | Array<{ type: string; text?: string; image_url?: { url: string } }> }> = [
-                { role: 'system', content: systemPrompt }
+            // Construct the messages array
+            const apiMessages = [
+                { role: 'system', content: systemPrompt },
+                ...messages.map(m => ({ role: m.role, content: m.content }))
             ];
 
-            // Add conversation history
-            for (const m of messages) {
-                apiMessages.push({ role: m.role, content: m.content });
-            }
-
-            // Always include the question image with the current user message
-            // so the model has visual context of the question being worked on
             if (imageBase64) {
                 apiMessages.push({
                     role: 'user',
                     content: [
-                        {
-                            type: 'image_url',
-                            image_url: {
-                                url: imageBase64
-                            }
-                        },
-                        {
-                            type: 'text',
-                            text: userMessage
-                        }
+                        { type: 'image_url', image_url: { url: imageBase64 } },
+                        { type: 'text', text: userMessage }
                     ]
-                });
+                } as any);
             } else {
-                apiMessages.push({ role: 'user', content: userMessage });
+                apiMessages.push({ role: 'user', content: userMessage } as any);
             }
 
-            const response = await fetch('https://api.openai.com/v1/chat/completions', {
+            // Call our Firebase Function instead of OpenAI directly
+            const response = await fetch('https://streamintuitive-yoiv4yepya-uc.a.run.app', {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${apiKey}`
+                    'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    model: 'gpt-4o-mini',
                     messages: apiMessages,
-                    stream: true,
+                    model: 'gpt-4o-mini',
                     max_tokens: 400
                 })
             });
 
             if (!response.ok) {
                 const errorText = await response.text();
-                console.error('API Error:', response.status, errorText);
-                throw new Error(`API error: ${response.status}`);
+                console.error('Function Error:', response.status, errorText);
+                throw new Error(`Function error: ${response.status}`);
             }
 
             const reader = response.body?.getReader();
@@ -205,7 +184,7 @@ Format your response clearly.`;
 
                             try {
                                 const parsed = JSON.parse(data);
-                                const content = parsed.choices?.[0]?.delta?.content || '';
+                                const content = parsed.content || '';
                                 fullContent += content;
                                 setStreamingContent(fullContent);
                             } catch {
