@@ -13,11 +13,13 @@ interface ChatBotProps {
     questionId: string;
     questionText?: string;
     questionImageUrl: string;
+    markschemeImageUrl?: string;
     isOpen: boolean;
     onClose: () => void;
+    isInline?: boolean;
 }
 
-export function ChatBot({ questionId, questionImageUrl, isOpen, onClose }: ChatBotProps) {
+export function ChatBot({ questionId, questionImageUrl, markschemeImageUrl, isOpen, onClose, isInline = false }: ChatBotProps) {
     const [messages, setMessages] = useState<Message[]>([]);
     const [inputValue, setInputValue] = useState('');
     const [isLoading, setIsLoading] = useState(false);
@@ -25,6 +27,7 @@ export function ChatBot({ questionId, questionImageUrl, isOpen, onClose }: ChatB
     const [isInStepMode, setIsInStepMode] = useState(false);
     const [currentStep, setCurrentStep] = useState(0);
     const [imageBase64, setImageBase64] = useState<string | null>(null);
+    const [markschemeBase64, setMarkschemeBase64] = useState<string | null>(null);
     const [isSolutionComplete, setIsSolutionComplete] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
@@ -46,23 +49,30 @@ export function ChatBot({ questionId, questionImageUrl, isOpen, onClose }: ChatB
     // Fetch and encode the question image when it changes
     useEffect(() => {
         if (questionImageUrl) {
-            fetchImageAsBase64(questionImageUrl);
+            fetchImageAsBase64(questionImageUrl, setImageBase64);
         }
     }, [questionImageUrl]);
 
-    const fetchImageAsBase64 = async (url: string) => {
+    // Fetch and encode the markscheme image when it changes
+    useEffect(() => {
+        if (markschemeImageUrl) {
+            fetchImageAsBase64(markschemeImageUrl, setMarkschemeBase64);
+        }
+    }, [markschemeImageUrl]);
+
+    const fetchImageAsBase64 = async (url: string, setter: (base64: string | null) => void) => {
         try {
             const response = await fetch(url);
             const blob = await response.blob();
             const reader = new FileReader();
             reader.onloadend = () => {
                 const base64 = reader.result as string;
-                setImageBase64(base64);
+                setter(base64);
             };
             reader.readAsDataURL(blob);
         } catch (error) {
             console.error('Error fetching image:', error);
-            setImageBase64(null);
+            setter(null);
         }
     };
 
@@ -98,7 +108,7 @@ export function ChatBot({ questionId, questionImageUrl, isOpen, onClose }: ChatB
 
             if (isInStepMode || userMessage.toLowerCase().includes('step by step') || userMessage.toLowerCase().includes('explain how')) {
                 const stepNum = isStepRequest ? currentStep + 1 : 1;
-                systemPrompt = `You are a helpful GCSE Maths tutor. You can SEE the question image that has been provided.
+                systemPrompt = `You are a helpful GCSE Maths tutor. You can SEE the question image and the markscheme (answer key) image that have been provided.
 
 IMPORTANT: The student has asked for step-by-step help. You are currently on STEP ${stepNum}.
 
@@ -109,21 +119,23 @@ YOUR RULES:
 4. Do NOT reveal future steps or the final answer until it's time
 5. Be encouraging and supportive
 6. Look at the question image carefully and provide specific guidance for THIS question
-7. When you reach the FINAL step where you give the complete answer/solution, you MUST end your message with exactly: [SOLUTION COMPLETE]
-8. Use LaTeX notation for all mathematical expressions. Use $...$ for inline math and $$...$$ for display math.
+7. Use the markscheme to guide the student towards the correct answer shown, but NEVER tell them the direct answer or show them the markscheme directly.
+8. When you reach the FINAL step where you give the complete answer/solution, you MUST end your message with exactly: [SOLUTION COMPLETE]
+9. Use LaTeX notation for all mathematical expressions. Use $...$ for inline math and $$...$$ for display math.
 
 Format your response clearly.`;
             } else {
-                systemPrompt = `You are a helpful GCSE Maths tutor. You can SEE the question image that has been provided.
+                systemPrompt = `You are a helpful GCSE Maths tutor. You can SEE the question image and the markscheme (answer key) image that have been provided.
 
 Your role is to:
 1. Look at the question image and understand what it's asking
-2. Give hints rather than full solutions
-3. Explain mathematical concepts clearly and simply
-4. Use encouraging language
-5. Keep responses SHORT and concise (3-5 sentences max)
-6. If they want step-by-step help, tell them to click the "Step by step" button
-7. Use LaTeX notation for all mathematical expressions. Use $...$ for inline math and $$...$$ for display math.
+2. Use the markscheme to guide them towards the correct answer, but NEVER give them the exact direct answer or reveal what the markscheme says.
+3. Give hints rather than full solutions
+4. Explain mathematical concepts clearly and simply
+5. Use encouraging language
+6. Keep responses SHORT and concise (3-5 sentences max)
+7. If they want step-by-step help, tell them to click the "Step by step" button
+8. Use LaTeX notation for all mathematical expressions. Use $...$ for inline math and $$...$$ for display math.
 
 Format your response clearly.`;
             }
@@ -134,13 +146,23 @@ Format your response clearly.`;
                 ...messages.map(m => ({ role: m.role, content: m.content }))
             ];
 
+            let userContent: any[] = [];
+
             if (imageBase64) {
+                userContent.push({ type: 'text', text: 'Target Question Image:' });
+                userContent.push({ type: 'image_url', image_url: { url: imageBase64 } });
+            }
+            if (markschemeBase64) {
+                userContent.push({ type: 'text', text: 'Markscheme/Answer Key Image for reference (DO NOT GIVE THE DIRECT ANSWER AWAY):' });
+                userContent.push({ type: 'image_url', image_url: { url: markschemeBase64 } });
+            }
+
+            userContent.push({ type: 'text', text: userMessage });
+
+            if (userContent.length > 1) { // Has images + text
                 apiMessages.push({
                     role: 'user',
-                    content: [
-                        { type: 'image_url', image_url: { url: imageBase64 } },
-                        { type: 'text', text: userMessage }
-                    ]
+                    content: userContent
                 } as any);
             } else {
                 apiMessages.push({ role: 'user', content: userMessage } as any);
@@ -274,7 +296,16 @@ Format your response clearly.`;
     };
 
     return (
-        <div style={{
+        <div style={isInline ? {
+            flex: 1,
+            backgroundColor: 'var(--color-surface, #ffffff)',
+            borderTop: '1px solid var(--color-border, #e5e5e5)',
+            display: 'flex',
+            flexDirection: 'column',
+            zIndex: 10,
+            minHeight: '0',
+            overflow: 'hidden'
+        } : {
             position: 'fixed',
             right: 0,
             top: 0,

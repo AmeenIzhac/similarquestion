@@ -24,12 +24,9 @@ export function SearchBar({
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [ocrText, setOcrText] = useState("");
 
-  // Clean up object URL when component unmounts
   useEffect(() => {
     return () => {
-      if (imagePreview) {
-        URL.revokeObjectURL(imagePreview);
-      }
+      if (imagePreview) URL.revokeObjectURL(imagePreview);
     };
   }, [imagePreview]);
 
@@ -46,19 +43,14 @@ export function SearchBar({
       const previewUrl = URL.createObjectURL(file);
       setImagePreview(previewUrl);
       setIsOCRProcessing(true);
-
       const result = await Tesseract.recognize(file, 'eng');
       const text = result.data.text.trim();
-      if (text) {
-        setOcrText(text);
-      }
+      if (text) setOcrText(text);
     } catch (error) {
       console.error("OCR Error:", error);
     } finally {
       setIsOCRProcessing(false);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
@@ -71,15 +63,11 @@ export function SearchBar({
   const handlePaste = async (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
     const items = e.clipboardData?.items;
     if (!items) return;
-
     for (let i = 0; i < items.length; i++) {
       if (items[i].type.indexOf('image') !== -1) {
-        e.preventDefault(); // Prevent default paste if we found an image
+        e.preventDefault();
         const file = items[i].getAsFile();
-        if (file) {
-          await processImage(file);
-          break; // Process only the first image
-        }
+        if (file) { await processImage(file); break; }
       }
     }
   };
@@ -88,9 +76,7 @@ export function SearchBar({
     if (imagePreview) URL.revokeObjectURL(imagePreview);
     setImagePreview(null);
     setOcrText('');
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   return (
@@ -98,27 +84,29 @@ export function SearchBar({
       onSubmit={handleSubmit}
       style={{
         flex: 1,
-        backgroundColor: '#ffffff',
-        border: '1px solid #e5e5e5',
-        borderRadius: imagePreview ? '16px' : '9999px',
-        padding: '6px 12px',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+        backgroundColor: 'var(--color-surface)',
+        border: '1px solid var(--color-border)',
+        borderRadius: imagePreview ? 'var(--radius-lg)' : 'var(--radius-full)',
+        padding: isMobile ? '4px 10px' : '6px 14px',
+        boxShadow: 'var(--shadow-md)',
         display: 'flex',
-        flexDirection: 'column'
+        flexDirection: 'column',
+        transition: 'box-shadow var(--transition-fast), border-radius var(--transition-fast)',
       }}
     >
+      {/* Image preview */}
       {imagePreview && (
-        <div style={{ padding: '4px 8px 8px 8px' }}>
+        <div style={{ padding: '8px 4px 4px 4px' }}>
           <div style={{ position: 'relative', display: 'inline-block' }}>
             <img
               src={imagePreview}
               alt="Preview"
               style={{
-                width: '60px',
-                height: '60px',
+                width: isMobile ? '50px' : '72px',
+                height: isMobile ? '50px' : '72px',
                 objectFit: 'cover',
-                borderRadius: '8px',
-                border: '1px solid #e5e5e5'
+                borderRadius: 'var(--radius-sm)',
+                border: '1px solid var(--color-border)',
               }}
             />
             <button
@@ -128,7 +116,7 @@ export function SearchBar({
                 position: 'absolute',
                 top: '-6px',
                 right: '-6px',
-                background: '#6e6e80',
+                background: 'var(--color-text-secondary)',
                 color: 'white',
                 border: 'none',
                 borderRadius: '50%',
@@ -138,7 +126,8 @@ export function SearchBar({
                 alignItems: 'center',
                 justifyContent: 'center',
                 cursor: 'pointer',
-                padding: 0
+                padding: 0,
+                transition: 'background var(--transition-fast)',
               }}
               title="Remove image"
             >
@@ -147,20 +136,22 @@ export function SearchBar({
             {isOCRProcessing && (
               <div style={{
                 position: 'absolute',
-                top: 0, left: 0, right: 0, bottom: 0,
-                background: 'rgba(255,255,255,0.7)',
+                inset: 0,
+                background: 'rgba(255,255,255,0.75)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                borderRadius: '8px'
+                borderRadius: 'var(--radius-sm)',
               }}>
-                <Loader2 size={20} className="animate-spin" color="#10a37f" />
+                <Loader2 size={18} className="animate-spin" color="var(--color-primary)" />
               </div>
             )}
           </div>
         </div>
       )}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+
+      {/* Input row */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
@@ -169,20 +160,22 @@ export function SearchBar({
             background: 'none',
             border: 'none',
             cursor: (isProcessing || isOCRProcessing) ? 'not-allowed' : 'pointer',
-            padding: '8px',
+            padding: '6px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            color: '#6e6e80',
+            color: 'var(--color-text-muted)',
             borderRadius: '50%',
-            opacity: (isProcessing || isOCRProcessing) ? 0.5 : 1,
+            opacity: (isProcessing || isOCRProcessing) ? 0.4 : 1,
+            transition: 'color var(--transition-fast), opacity var(--transition-fast)',
+            flexShrink: 0,
           }}
           title="Upload image for OCR"
         >
           {isOCRProcessing ? (
-            <Loader2 size={24} className="animate-spin" />
+            <Loader2 size={20} className="animate-spin" />
           ) : (
-            <Paperclip size={24} />
+            <Paperclip size={20} />
           )}
         </button>
         <input
@@ -207,20 +200,23 @@ export function SearchBar({
             }
           }}
           onPaste={handlePaste}
-          placeholder={isOCRProcessing ? "Reading image..." : placeholder}
+          placeholder={isOCRProcessing ? "Reading image…" : placeholder}
           rows={1}
           style={{
             flex: 1,
             height: 'auto',
-            minHeight: '44px',
-            padding: '10px 12px',
+            minHeight: '42px',
+            padding: '10px 8px',
             border: 'none',
             outline: 'none',
-            fontSize: isMobile ? '14px' : '16px',
+            fontSize: isMobile ? '14px' : '15px',
             resize: 'none',
             boxSizing: 'border-box',
             background: 'transparent',
-            overflow: 'hidden'
+            overflow: 'hidden',
+            fontFamily: 'var(--font-family)',
+            color: 'var(--color-text)',
+            lineHeight: 1.5,
           }}
         />
       </div>

@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
+import { ChevronLeft, ChevronRight, Plus, Minus, Eye, MessageCircle } from 'lucide-react';
 import type { Match, ViewMode, AnnotationMode, TextInputPosition } from '../types/index';
 import { formatLabelId, getDocumentBaseFromLabel } from '../utils/formatters';
+import { ChatBot } from './ChatBot';
 
 interface QuestionViewerProps {
   currentMatch: Match;
@@ -30,6 +32,7 @@ interface QuestionViewerProps {
   onToggleSelection: () => void;
   isChatOpen: boolean;
   onToggleChat: () => void;
+  isMobile: boolean;
 }
 
 export function QuestionViewer({
@@ -59,7 +62,8 @@ export function QuestionViewer({
   isCurrentSelected,
   onToggleSelection,
   isChatOpen,
-  onToggleChat
+  onToggleChat,
+  isMobile
 }: QuestionViewerProps) {
   const pdfMenuRef = useRef<HTMLDivElement | null>(null);
   const [pdfMenuOpen, setPdfMenuOpen] = useState(false);
@@ -79,163 +83,168 @@ export function QuestionViewer({
   const paperPdfUrl = documentBase ? `/edexcel-gcse-maths-papers/${documentBase}.pdf` : null;
   const markschemePdfUrl = documentBase ? `/edexcel-gcse-maths-markschemes/${documentBase}.pdf` : null;
 
+  const toolbarBtnStyle = (variant: 'default' | 'primary' | 'danger' = 'default'): React.CSSProperties => ({
+    padding: isMobile ? '6px 8px' : '6px 12px',
+    backgroundColor: variant === 'primary' ? 'var(--color-primary)' : variant === 'danger' ? 'var(--color-danger)' : 'var(--color-surface)',
+    color: variant === 'default' ? 'var(--color-text)' : '#fff',
+    border: `1px solid ${variant === 'primary' ? 'var(--color-primary)' : variant === 'danger' ? 'var(--color-danger)' : 'var(--color-border)'}`,
+    borderRadius: 'var(--radius-sm)',
+    cursor: 'pointer',
+    fontSize: isMobile ? '11px' : '12px',
+    fontWeight: 600,
+    display: 'flex',
+    alignItems: 'center',
+    gap: '4px',
+    whiteSpace: 'nowrap',
+    transition: 'all var(--transition-fast)',
+  });
+
   return (
     <>
+      {/* Toolbar */}
       <div style={{
         flex: 'none',
-        padding: '8px 16px',
-        borderBottom: '1px solid #e5e5e5',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        backgroundColor: '#ffffff',
-        boxSizing: 'border-box'
+        borderBottom: '1px solid var(--color-border)',
+        backgroundColor: 'var(--color-surface)',
+        boxSizing: 'border-box',
       }}>
-        <span style={{ fontSize: '13px', fontWeight: 600, color: '#333', flex: 1, marginRight: '10px' }}>
-          {formatLabelId(currentMatch.labelId)}
-        </span>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        {/* Row 1: Title + Navigation */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: isMobile ? '6px' : '10px',
+          padding: isMobile ? '8px 10px 4px' : '8px 16px',
+          paddingLeft: isMobile ? '50px' : '16px',
+        }}>
+          <span style={{
+            fontSize: isMobile ? '13px' : '13px',
+            fontWeight: 600,
+            color: 'var(--color-text)',
+            marginRight: 'auto',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+            minWidth: 0,
+          }}>
+            {formatLabelId(currentMatch.labelId)}
+          </span>
+
+          <span style={{
+            fontSize: '11px',
+            color: 'var(--color-text-secondary)',
+            fontWeight: 500,
+            flexShrink: 0,
+          }}>
+            {currentMatchIndex + 1}/{totalMatches}
+          </span>
+
+          <div style={{ display: 'flex', gap: '3px', flexShrink: 0 }}>
+            <button onClick={onPrevMatch} style={toolbarBtnStyle()} title="Previous">
+              <ChevronLeft size={16} />
+              {!isMobile && 'Prev'}
+            </button>
+            <button onClick={onNextMatch} style={toolbarBtnStyle()} title="Next">
+              {!isMobile && 'Next'}
+              <ChevronRight size={16} />
+            </button>
+          </div>
+        </div>
+
+        {/* Row 2: Action buttons */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: isMobile ? '6px' : '10px',
+          padding: isMobile ? '4px 10px 8px' : '4px 16px 8px',
+          paddingLeft: isMobile ? '50px' : '16px',
+        }}>
+          {/* PDF view dropdown */}
           <div ref={pdfMenuRef} style={{ position: 'relative' }}>
             <button
               onClick={() => setPdfMenuOpen((prev: boolean) => !prev)}
-              style={{
-                padding: '6px 10px',
-                backgroundColor: viewMode === 'question' ? '#f2f2f3' : '#10a37f',
-                color: viewMode === 'question' ? '#111' : '#fff',
-                border: '1px solid #e5e5e5',
-                borderRadius: '4px',
-                cursor: 'pointer',
-                fontSize: '11px',
-                fontWeight: 600,
-                display: 'flex',
-                alignItems: 'center',
-                gap: '4px'
-              }}
+              style={toolbarBtnStyle(viewMode !== 'question' ? 'primary' : 'default')}
             >
-              {viewMode === 'question' ? 'View paper/markscheme' : viewMode === 'paper' ? 'Showing paper PDF' : 'Showing markscheme PDF'}
-              <span style={{ fontSize: '10px' }}>▼</span>
+              {isMobile
+                ? <><Eye size={14} /> <span style={{ fontSize: '9px' }}>▼</span></>
+                : <>{viewMode === 'question' ? 'View paper/markscheme' : viewMode === 'paper' ? 'Paper PDF' : 'Markscheme PDF'} <span style={{ fontSize: '9px' }}>▼</span></>
+              }
             </button>
             {pdfMenuOpen && (
               <div
+                className="animate-fade-in"
                 style={{
                   position: 'absolute',
-                  top: 'calc(100% + 6px)',
-                  right: 0,
-                  backgroundColor: '#ffffff',
-                  border: '1px solid #e5e5e5',
-                  borderRadius: '6px',
-                  boxShadow: '0 8px 16px rgba(0,0,0,0.12)',
+                  top: 'calc(100% + 4px)',
+                  left: 0,
+                  backgroundColor: 'var(--color-surface)',
+                  border: '1px solid var(--color-border)',
+                  borderRadius: 'var(--radius-md)',
+                  boxShadow: 'var(--shadow-lg)',
                   display: 'flex',
                   flexDirection: 'column',
-                  minWidth: '200px',
-                  zIndex: 20
+                  minWidth: '180px',
+                  zIndex: 20,
+                  overflow: 'hidden',
                 }}
               >
-                <button
-                  type="button"
-                  onClick={() => { setViewMode('question'); setPdfMenuOpen(false); }}
-                  style={{
-                    padding: '10px 14px',
-                    background: 'transparent',
-                    border: 'none',
-                    borderBottom: '1px solid #f2f2f3',
-                    fontSize: '12px',
-                    textAlign: 'left',
-                    cursor: 'pointer',
-                    color: '#111'
-                  }}
-                >
-                  Show question image
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { if (paperPdfUrl) { setViewMode('paper'); setPdfMenuOpen(false); } }}
-                  disabled={!paperPdfUrl}
-                  style={{
-                    padding: '10px 14px',
-                    background: 'transparent',
-                    border: 'none',
-                    borderBottom: '1px solid #f2f2f3',
-                    fontSize: '12px',
-                    textAlign: 'left',
-                    cursor: paperPdfUrl ? 'pointer' : 'not-allowed',
-                    color: paperPdfUrl ? '#111' : '#9ca3af'
-                  }}
-                >
-                  View full paper PDF
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { if (markschemePdfUrl) { setViewMode('markscheme'); setPdfMenuOpen(false); } }}
-                  disabled={!markschemePdfUrl}
-                  style={{
-                    padding: '10px 14px',
-                    background: 'transparent',
-                    border: 'none',
-                    fontSize: '12px',
-                    textAlign: 'left',
-                    cursor: markschemePdfUrl ? 'pointer' : 'not-allowed',
-                    color: markschemePdfUrl ? '#111' : '#9ca3af'
-                  }}
-                >
-                  View full markscheme PDF
-                </button>
+                {[
+                  { label: 'Show question image', mode: 'question' as ViewMode, url: true },
+                  { label: 'View full paper PDF', mode: 'paper' as ViewMode, url: !!paperPdfUrl },
+                  { label: 'View markscheme PDF', mode: 'markscheme' as ViewMode, url: !!markschemePdfUrl },
+                ].map(({ label, mode, url }, i) => (
+                  <button
+                    key={mode}
+                    type="button"
+                    onClick={() => { if (url) { setViewMode(mode); setPdfMenuOpen(false); } }}
+                    disabled={!url}
+                    style={{
+                      padding: '10px 14px',
+                      background: viewMode === mode ? 'var(--color-primary-light)' : 'transparent',
+                      border: 'none',
+                      borderBottom: i < 2 ? '1px solid var(--color-border-light)' : 'none',
+                      fontSize: '13px',
+                      textAlign: 'left',
+                      cursor: url ? 'pointer' : 'not-allowed',
+                      color: url ? 'var(--color-text)' : 'var(--color-text-muted)',
+                      fontWeight: viewMode === mode ? 600 : 400,
+                      fontFamily: 'var(--font-family)',
+                    }}
+                  >
+                    {label}
+                  </button>
+                ))}
               </div>
             )}
           </div>
-          <span style={{ fontSize: '11px', color: '#555' }}>
-            Match {currentMatchIndex + 1} of {totalMatches}
-          </span>
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <button
-              onClick={onPrevMatch}
-              style={{ padding: '6px 10px', backgroundColor: '#f2f2f3', color: '#111', border: '1px solid #e5e5e5', borderRadius: '4px', cursor: 'pointer', fontSize: '11px' }}
-            >
-              Previous
-            </button>
-            <button
-              onClick={onNextMatch}
-              style={{ padding: '6px 10px', backgroundColor: '#f2f2f3', color: '#111', border: '1px solid #e5e5e5', borderRadius: '4px', cursor: 'pointer', fontSize: '11px' }}
-            >
-              Next
-            </button>
-          </div>
+
+          {/* Worksheet toggle */}
           <button
             onClick={onToggleSelection}
-            style={{
-              padding: '6px 10px',
-              backgroundColor: isCurrentSelected ? '#ef4444' : '#10a37f',
-              color: '#fff',
-              border: '1px solid',
-              borderColor: isCurrentSelected ? '#ef4444' : '#10a37f',
-              borderRadius: '4px',
-              cursor: 'pointer',
-              fontSize: '11px',
-              fontWeight: 'bold'
-            }}
+            style={toolbarBtnStyle(isCurrentSelected ? 'danger' : 'primary')}
+            title={isCurrentSelected ? 'Remove from worksheet' : 'Add to worksheet'}
           >
-            {isCurrentSelected ? 'Remove from list' : 'Add to worksheet'}
+            {isCurrentSelected ? <Minus size={14} /> : <Plus size={14} />}
+            {!isMobile && (isCurrentSelected ? 'Remove' : 'Add to worksheet')}
           </button>
+
+          {/* Chat toggle */}
           <button
             onClick={onToggleChat}
             style={{
-              padding: '6px 12px',
-              backgroundColor: '#10a37f',
-              color: '#fff',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: 'pointer',
-              fontSize: '11px',
-              fontWeight: 600,
-              transition: 'all 0.2s',
-              opacity: isChatOpen ? 0.8 : 1
+              ...toolbarBtnStyle(isChatOpen ? 'danger' : 'primary'),
             }}
+            title={isChatOpen ? 'Close help' : 'Get help'}
           >
-            {isChatOpen ? 'Close Help' : 'Get Help'}
+            <MessageCircle size={14} />
+            {isMobile
+              ? (isChatOpen ? 'Close' : 'Help')
+              : (isChatOpen ? 'Close Help' : 'Get Help')
+            }
           </button>
         </div>
       </div>
 
+      {/* Content area */}
       <div style={{
         flex: 1,
         padding: '0px',
@@ -245,15 +254,16 @@ export function QuestionViewer({
         flexDirection: 'column'
       }}>
         {viewMode === 'question' ? (
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%' }}>
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
             <div
               ref={questionContainerRef}
               style={{
-                flex: 1,
+                flex: (isMobile && isChatOpen) ? '0 1 auto' : '1 1 0%',
                 overflowY: 'auto',
                 minHeight: 0,
-                borderRadius: '6px',
-                paddingBottom: '150px',
+                maxHeight: (isMobile && isChatOpen) ? '45%' : 'none',
+                borderRadius: 'var(--radius-sm)',
+                paddingBottom: (isMobile && isChatOpen) ? '10px' : '150px',
                 position: 'relative'
               }}
             >
@@ -302,8 +312,8 @@ export function QuestionViewer({
                     autoFocus
                     style={{
                       padding: '4px 8px',
-                      border: '2px solid #2563eb',
-                      borderRadius: '4px',
+                      border: '2px solid var(--color-primary)',
+                      borderRadius: 'var(--radius-sm)',
                       fontSize: '14px',
                       outline: 'none',
                       minWidth: '100px'
@@ -313,7 +323,7 @@ export function QuestionViewer({
                 </div>
               )}
             </div>
-            {showMarkscheme && (
+            {showMarkscheme && (!isMobile || !isChatOpen) && (
               <div
                 ref={markschemeContainerRef}
                 style={{
@@ -369,8 +379,8 @@ export function QuestionViewer({
                       autoFocus
                       style={{
                         padding: '4px 8px',
-                        border: '2px solid #2563eb',
-                        borderRadius: '4px',
+                        border: '2px solid var(--color-primary)',
+                        borderRadius: 'var(--radius-sm)',
                         fontSize: '14px',
                         outline: 'none',
                         minWidth: '100px'
@@ -391,7 +401,31 @@ export function QuestionViewer({
             />
           </div>
         )}
+
+        {isMobile && isChatOpen && (
+          <ChatBot
+            questionId={currentMatch.labelId}
+            questionText={currentMatch.text}
+            questionImageUrl={`/edexcel-gcse-maths-questions/${currentMatch.labelId}`}
+            markschemeImageUrl={`/edexcel-gcse-maths-answers/${currentMatch.labelId}`}
+            isOpen={true}
+            onClose={onToggleChat}
+            isInline={true}
+          />
+        )}
       </div>
+
+      {!isMobile && (
+        <ChatBot
+          questionId={currentMatch.labelId}
+          questionText={currentMatch.text}
+          questionImageUrl={`/edexcel-gcse-maths-questions/${currentMatch.labelId}`}
+          markschemeImageUrl={`/edexcel-gcse-maths-answers/${currentMatch.labelId}`}
+          isOpen={isChatOpen}
+          onClose={onToggleChat}
+          isInline={false}
+        />
+      )}
     </>
   );
 }
