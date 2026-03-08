@@ -132,6 +132,7 @@ function App() {
         selectedQuestions={selectedQuestions}
         removeSelectedQuestion={removeSelectedQuestion}
         onOpenFilters={() => setShowCenterFilter(true)}
+        topMatches={topMatches}
       />
 
       {/* Main Content Area */}
