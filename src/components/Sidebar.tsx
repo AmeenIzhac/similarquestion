@@ -2,8 +2,7 @@ import { useState } from 'react';
 import { AnnotationTools } from './AnnotationTools';
 import { WorksheetPanel } from './WorksheetPanel';
 import { FeedbackForm } from './FeedbackForm';
-import type { AnnotationMode } from '../types/index';
-
+import type { AnnotationMode, Match } from '../types/index';
 interface SidebarProps {
   isMobile: boolean;
   annotationMode: AnnotationMode;
@@ -13,6 +12,7 @@ interface SidebarProps {
   selectedQuestions: string[];
   removeSelectedQuestion: (labelId: string) => void;
   onOpenFilters: () => void;
+  topMatches?: Match[];
 }
 
 export function Sidebar({
@@ -23,13 +23,29 @@ export function Sidebar({
   undoLastAnnotation,
   selectedQuestions,
   removeSelectedQuestion,
-  onOpenFilters
+  onOpenFilters,
+  topMatches
 }: SidebarProps) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [showWorksheet, setShowWorksheet] = useState(false);
+  const [isSavingAll, setIsSavingAll] = useState(false);
   const [showFeedbackForm, setShowFeedbackForm] = useState(false);
 
   const openSidebarWidth = isMobile ? 220 : 300;
+
+  const handleDownloadAll = async () => {
+    if (!topMatches || topMatches.length === 0 || isSavingAll) return;
+    setIsSavingAll(true);
+    try {
+      const { generatePdf } = await import('../utils/pdf');
+      const matchLabels = topMatches.map(m => m.labelId);
+      await generatePdf(matchLabels, 'questions', 'all-matches');
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+    } finally {
+      setIsSavingAll(false);
+    }
+  };
 
   return (
     <div style={{
@@ -155,6 +171,31 @@ export function Sidebar({
             >
               {showFeedbackForm ? 'Hide Feedback' : 'Request Features'}
             </button>
+
+            {topMatches && topMatches.length > 0 && (
+              <button
+                onClick={handleDownloadAll}
+                disabled={isSavingAll}
+                style={{
+                  width: '100%',
+                  padding: '10px 16px',
+                  backgroundColor: isSavingAll ? '#85d1bf' : '#10a37f',
+                  color: '#fff',
+                  border: `1px solid ${isSavingAll ? '#85d1bf' : '#10a37f'}`,
+                  borderRadius: '4px',
+                  cursor: isSavingAll ? 'not-allowed' : 'pointer',
+                  fontSize: '14px',
+                  fontWeight: 600,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
+                  marginTop: '12px'
+                }}
+              >
+                {isSavingAll ? 'Saving...' : 'Download All Questions'}
+              </button>
+            )}
 
             {showFeedbackForm && <FeedbackForm />}
 
