@@ -106,11 +106,12 @@ function App() {
   }, []);
 
   // Search handlers
-  const handleTextSearch = (e?: React.FormEvent) => {
+  const handleTextSearch = (e?: React.FormEvent, directText?: string) => {
     e?.preventDefault();
-    if (searchText.trim()) {
+    const query = directText || searchText.trim();
+    if (query) {
       setHasStarted(true);
-      searchByText(searchText);
+      searchByText(query);
     }
   };
 
@@ -151,7 +152,7 @@ function App() {
             <div style={{ width: '100%', maxWidth: '760px', margin: '0 auto', padding: '24px' }}>
               <div style={{ textAlign: 'center', marginBottom: '18px' }}>
                 <h1 style={{ margin: 0, fontSize: '28px', fontWeight: 600, color: '#111' }}>
-                  Find Similar Edexcel GCSE Maths Questions
+                  Describe a maths question or topic
                 </h1>
               </div>
               <SearchBar
