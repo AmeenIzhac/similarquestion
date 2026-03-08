@@ -1,30 +1,50 @@
 
 export function LoadingOverlay() {
   return (
-    <div style={{ 
-      position: 'absolute',
-      top: '50%',
-      left: '50%',
-      transform: 'translate(-50%, -50%)',
-      zIndex: 2,
-      display: 'flex',
-      justifyContent: 'center',
-      alignItems: 'center',
-      backgroundColor: 'rgba(255, 255, 255, 0.9)',
-      borderRadius: '10px',
-      padding: '40px'
-    }}>
-      <div style={{ 
-        textAlign: 'center',
-        fontSize: '18px',
-        color: '#10a37f',
-        fontWeight: 'bold'
+    <div
+      className="animate-fade-in"
+      style={{
+        position: 'absolute',
+        inset: 0,
+        zIndex: 10,
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: 'rgba(255, 255, 255, 0.8)',
+        backdropFilter: 'blur(4px)',
+        WebkitBackdropFilter: 'blur(4px)'
+      }}
+    >
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: '16px'
       }}>
-        Processing...
-        <br />
-        <span style={{ fontSize: '14px', color: '#666', fontWeight: 'normal' }}>
-          Finding similar questions...
-        </span>
+        <div style={{
+          width: '40px',
+          height: '40px',
+          border: '3px solid var(--color-border)',
+          borderTopColor: 'var(--color-primary)',
+          borderRadius: '50%',
+          animation: 'spin 0.8s linear infinite'
+        }} />
+        <div style={{ textAlign: 'center' }}>
+          <div style={{
+            fontSize: '15px',
+            fontWeight: 600,
+            color: 'var(--color-text)',
+            marginBottom: '4px'
+          }}>
+            Finding similar questions…
+          </div>
+          <div style={{
+            fontSize: '13px',
+            color: 'var(--color-text-secondary)'
+          }}>
+            This may take a few seconds
+          </div>
+        </div>
       </div>
     </div>
   );

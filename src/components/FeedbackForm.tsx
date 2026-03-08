@@ -28,7 +28,7 @@ export function FeedbackForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!formData.message.trim() || !formData.email.trim()) {
       setFormStatus({
         isSubmitting: false,
@@ -49,12 +49,7 @@ export function FeedbackForm() {
       return;
     }
 
-    setFormStatus({
-      isSubmitting: true,
-      isSuccess: false,
-      isError: false,
-      message: ''
-    });
+    setFormStatus({ isSubmitting: true, isSuccess: false, isError: false, message: '' });
 
     try {
       const templateParams = {
@@ -63,12 +58,7 @@ export function FeedbackForm() {
         to_email: 'ameenizhac@gmail.com'
       };
 
-      await emailjs.send(
-        EMAILJS_SERVICE_ID,
-        EMAILJS_TEMPLATE_ID,
-        templateParams,
-        EMAILJS_PUBLIC_KEY
-      );
+      await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, templateParams, EMAILJS_PUBLIC_KEY);
 
       setFormStatus({
         isSubmitting: false,
@@ -89,21 +79,33 @@ export function FeedbackForm() {
     }
   };
 
+  const inputStyle: React.CSSProperties = {
+    width: '100%',
+    padding: '10px 12px',
+    borderRadius: 'var(--radius-sm)',
+    border: '1px solid var(--color-border)',
+    fontSize: '13px',
+    fontFamily: 'var(--font-family)',
+    color: 'var(--color-text)',
+    outline: 'none',
+    transition: 'border-color var(--transition-fast)',
+    boxSizing: 'border-box',
+  };
+
   return (
     <form
       onSubmit={handleSubmit}
       style={{
-        marginTop: '12px',
-        padding: '12px',
-        border: '1px solid #e5e5e5',
-        borderRadius: '6px',
-        backgroundColor: '#fff',
+        padding: '14px',
+        border: '1px solid var(--color-border)',
+        borderRadius: 'var(--radius-sm)',
+        backgroundColor: 'var(--color-surface)',
         display: 'flex',
         flexDirection: 'column',
-        gap: '8px'
+        gap: '10px'
       }}
     >
-      <div style={{ fontSize: '13px', color: 'black', lineHeight: 1.4, fontWeight: 600 }}>
+      <div style={{ fontSize: '13px', color: 'var(--color-text)', lineHeight: 1.5, fontWeight: 600 }}>
         Share feedback, report bugs, or suggest features you'd like to see.
       </div>
       <textarea
@@ -112,14 +114,7 @@ export function FeedbackForm() {
         value={formData.message}
         onChange={handleInputChange}
         rows={3}
-        style={{
-          width: '100%',
-          padding: '8px 10px',
-          borderRadius: '4px',
-          border: '1px solid #d1d5db',
-          fontSize: '13px',
-          resize: 'vertical'
-        }}
+        style={{ ...inputStyle, resize: 'vertical' }}
       />
       <input
         type="email"
@@ -128,24 +123,17 @@ export function FeedbackForm() {
         required
         value={formData.email}
         onChange={handleInputChange}
-        style={{
-          width: '100%',
-          padding: '8px 10px',
-          borderRadius: '4px',
-          border: '1px solid #d1d5db',
-          fontSize: '13px'
-        }}
+        style={inputStyle}
       />
-      <div style={{ fontSize: '11px', color: '#6b7280' }}>
+      <div style={{ fontSize: '11px', color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
         Your email is needed to sometimes ask for clarification if feedback is not clear.
       </div>
       {formStatus.message && (
-        <div
-          style={{
-            fontSize: '12px',
-            color: formStatus.isError ? '#b91c1c' : '#047857'
-          }}
-        >
+        <div style={{
+          fontSize: '12px',
+          color: formStatus.isError ? 'var(--color-danger)' : 'var(--color-primary)',
+          fontWeight: 500,
+        }}>
           {formStatus.message}
         </div>
       )}
@@ -154,17 +142,19 @@ export function FeedbackForm() {
         disabled={formStatus.isSubmitting}
         style={{
           alignSelf: 'flex-end',
-          padding: '8px 16px',
-          backgroundColor: formStatus.isSubmitting ? '#9ca3af' : '#10a37f',
+          padding: '8px 18px',
+          backgroundColor: formStatus.isSubmitting ? 'var(--color-text-muted)' : 'var(--color-primary)',
           color: '#fff',
           border: 'none',
-          borderRadius: '4px',
+          borderRadius: 'var(--radius-sm)',
           cursor: formStatus.isSubmitting ? 'not-allowed' : 'pointer',
           fontSize: '13px',
-          fontWeight: 600
+          fontWeight: 600,
+          fontFamily: 'var(--font-family)',
+          transition: 'background var(--transition-fast)',
         }}
       >
-        {formStatus.isSubmitting ? 'Sending...' : 'Send Message'}
+        {formStatus.isSubmitting ? 'Sending…' : 'Send Message'}
       </button>
     </form>
   );

@@ -1,7 +1,8 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
-import { Sidebar, SearchBar, FilterModal, LoadingOverlay, QuestionViewer, ChatBot } from './components';
+import { Sidebar, SearchBar, FilterModal, LoadingOverlay, QuestionViewer } from './components';
 import { useAnnotations } from './hooks/useAnnotations';
 import { useSearch } from './hooks/useSearch';
+import { Menu } from 'lucide-react';
 import type { LevelFilter, CalculatorFilter, SearchMethod, ViewMode } from './types/index';
 
 function App() {
@@ -23,6 +24,7 @@ function App() {
     return window.innerWidth <= 768;
   });
   const [isChatOpen, setIsChatOpen] = useState<boolean>(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
 
   // Search hook
   const {
@@ -66,7 +68,11 @@ function App() {
   // Handle window resize
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    const handleResize = () => {
+      const mobile = window.innerWidth <= 768;
+      setIsMobile(mobile);
+      if (!mobile) setMobileMenuOpen(false);
+    };
     handleResize();
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
@@ -122,8 +128,10 @@ function App() {
     }
   }, [hasStarted, searchText, searchByText]);
 
+  const isLanding = !hasStarted && !isProcessing && (!currentMatch || currentMatch.labelId === 'error');
+
   return (
-    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', backgroundColor: '#f7f7f8' }}>
+    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', backgroundColor: 'var(--color-bg)' }}>
       <Sidebar
         isMobile={isMobile}
         annotationMode={annotationMode}
@@ -134,6 +142,8 @@ function App() {
         removeSelectedQuestion={removeSelectedQuestion}
         onOpenFilters={() => setShowCenterFilter(true)}
         topMatches={topMatches}
+        mobileOpen={mobileMenuOpen}
+        setMobileOpen={setMobileMenuOpen}
       />
 
       {/* Main Content Area */}
@@ -144,16 +154,69 @@ function App() {
         display: 'flex',
         flexDirection: 'column',
         overflow: 'hidden',
-        backgroundColor: '#ffffff'
+        backgroundColor: 'var(--color-surface)'
       }}>
+        {/* Mobile hamburger */}
+        {isMobile && (
+          <button
+            onClick={() => setMobileMenuOpen(true)}
+            style={{
+              position: 'absolute',
+              top: '12px',
+              left: '12px',
+              zIndex: 30,
+              width: '38px',
+              height: '38px',
+              backgroundColor: 'var(--color-surface)',
+              border: '1px solid var(--color-border)',
+              borderRadius: 'var(--radius-sm)',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: 'var(--shadow-sm)',
+              color: 'var(--color-text)',
+            }}
+            title="Open menu"
+          >
+            <Menu size={20} />
+          </button>
+        )}
+
         {/* Landing page */}
-        {!hasStarted && !isProcessing && (!currentMatch || currentMatch.labelId === 'error') && (
-          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
-            <div style={{ width: '100%', maxWidth: '760px', margin: '0 auto', padding: '24px' }}>
-              <div style={{ textAlign: 'center', marginBottom: '18px' }}>
-                <h1 style={{ margin: 0, fontSize: '28px', fontWeight: 600, color: '#111' }}>
+        {isLanding && (
+          <div style={{
+            flex: 1,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            position: 'relative',
+          }}>
+            <div style={{
+              width: '100%',
+              maxWidth: '680px',
+              margin: '0 auto',
+              padding: isMobile ? '24px 20px' : '24px 32px',
+            }}>
+              <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+                <h1 style={{
+                  margin: '0 0 8px 0',
+                  fontSize: isMobile ? '22px' : '32px',
+                  fontWeight: 700,
+                  color: 'var(--color-text)',
+                  lineHeight: 1.2,
+                  letterSpacing: '-0.02em',
+                }}>
                   Describe a maths question or topic
                 </h1>
+                <p style={{
+                  margin: 0,
+                  fontSize: isMobile ? '14px' : '15px',
+                  color: 'var(--color-text-secondary)',
+                  lineHeight: 1.5,
+                }}>
+                  Upload an image or type a description to find similar GCSE questions
+                </p>
               </div>
               <SearchBar
                 searchText={searchText}
@@ -163,8 +226,16 @@ function App() {
                 isMobile={isMobile}
               />
             </div>
-            <div style={{ position: 'absolute', bottom: '16px', left: 0, right: 0, textAlign: 'center', color: '#8e8ea0', fontSize: '11px' }}>
-              Similar Question 2025.
+            <div style={{
+              position: 'absolute',
+              bottom: '16px',
+              left: 0,
+              right: 0,
+              textAlign: 'center',
+              color: 'var(--color-text-muted)',
+              fontSize: '11px',
+            }}>
+              Similar Question 2025
             </div>
           </div>
         )}
@@ -199,19 +270,10 @@ function App() {
             onToggleSelection={toggleCurrentQuestionSelection}
             isChatOpen={isChatOpen}
             onToggleChat={() => setIsChatOpen(prev => !prev)}
+            isMobile={isMobile}
           />
         )}
 
-        {/* ChatBot panel */}
-        {currentMatch && !isProcessing && currentMatch.labelId !== 'error' && (
-          <ChatBot
-            questionId={currentMatch.labelId}
-            questionText={currentMatch.text}
-            questionImageUrl={`/edexcel-gcse-maths-questions/${currentMatch.labelId}`}
-            isOpen={isChatOpen}
-            onClose={() => setIsChatOpen(false)}
-          />
-        )}
 
         {/* Error state */}
         {currentMatch && !isProcessing && currentMatch.labelId === 'error' && (
@@ -222,8 +284,8 @@ function App() {
             justifyContent: 'center',
             padding: '40px',
             textAlign: 'center',
-            color: '#555',
-            fontSize: '16px'
+            color: 'var(--color-text-secondary)',
+            fontSize: '15px'
           }}>
             {currentMatch.text}
           </div>
@@ -234,23 +296,39 @@ function App() {
 
         {/* Bottom search bar */}
         {hasStarted && !isProcessing && (
-          <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '16px 0' }}>
-            <div style={{ width: '100%', maxWidth: '800px', margin: '0 auto', padding: '0 24px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{
+            position: 'absolute',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            padding: isMobile ? '10px 0' : '16px 0',
+            background: 'linear-gradient(to top, var(--color-surface) 70%, transparent)',
+          }}>
+            <div style={{
+              width: '100%',
+              maxWidth: '800px',
+              margin: '0 auto',
+              padding: isMobile ? '0 12px' : '0 24px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+            }}>
               {viewMode === 'question' && currentMatch && currentMatch.labelId !== 'error' && (
                 <button
                   type="button"
                   onClick={() => setShowMarkscheme((prev) => !prev)}
                   style={{
                     padding: '10px 16px',
-                    backgroundColor: '#10a37f',
+                    backgroundColor: 'var(--color-primary)',
                     color: '#fff',
-                    border: '1px solid #109e7b',
-                    borderRadius: '9999px',
+                    border: 'none',
+                    borderRadius: 'var(--radius-full)',
                     fontSize: '13px',
                     fontWeight: 600,
                     cursor: 'pointer',
                     whiteSpace: 'nowrap',
-                    marginLeft: '-24px'
+                    transition: 'background var(--transition-fast)',
+                    flexShrink: 0,
                   }}
                 >
                   {showMarkscheme ? 'Hide markscheme' : 'View markscheme'}
