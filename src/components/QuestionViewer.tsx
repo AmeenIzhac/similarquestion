@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight, Plus, Minus, Eye, MessageCircle } from 'luci
 import type { Match, ViewMode, AnnotationMode, TextInputPosition } from '../types/index';
 import { formatLabelId, getDocumentBaseFromLabel } from '../utils/formatters';
 import { ChatBot } from './ChatBot';
+import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
 
 interface QuestionViewerProps {
   currentMatch: Match;
@@ -67,6 +68,33 @@ export function QuestionViewer({
 }: QuestionViewerProps) {
   const pdfMenuRef = useRef<HTMLDivElement | null>(null);
   const [pdfMenuOpen, setPdfMenuOpen] = useState(false);
+  const [isTitleExpanded, setIsTitleExpanded] = useState(false);
+  const [qMinScale, setQMinScale] = useState(0.1);
+  const [mMinScale, setMMinScale] = useState(0.1);
+
+  const calculateScales = () => {
+    if (questionContainerRef.current) {
+      const contentHeight = questionContainerRef.current.scrollHeight;
+      const visibleHeight = questionContainerRef.current.clientHeight;
+      if (contentHeight > 0) setQMinScale(Math.min(1, Math.max(0.05, visibleHeight / contentHeight)));
+    }
+    if (markschemeContainerRef.current) {
+      const contentHeight = markschemeContainerRef.current.scrollHeight;
+      const visibleHeight = markschemeContainerRef.current.clientHeight;
+      if (contentHeight > 0) setMMinScale(Math.min(1, Math.max(0.05, visibleHeight / contentHeight)));
+    }
+  };
+
+  useEffect(() => {
+    setTimeout(calculateScales, 100);
+    window.addEventListener('resize', calculateScales);
+    return () => window.removeEventListener('resize', calculateScales);
+  }, [showMarkscheme, currentMatch.labelId, isChatOpen]);
+
+  const handleImageLoad = () => {
+    onImageLoad();
+    setTimeout(calculateScales, 50);
+  };
 
   useEffect(() => {
     if (!pdfMenuOpen) return;
@@ -84,13 +112,13 @@ export function QuestionViewer({
   const markschemePdfUrl = documentBase ? `/edexcel-gcse-maths-markschemes/${documentBase}.pdf` : null;
 
   const toolbarBtnStyle = (variant: 'default' | 'primary' | 'danger' = 'default'): React.CSSProperties => ({
-    padding: isMobile ? '6px 8px' : '6px 12px',
+    padding: isMobile ? '8px 10px' : '6px 12px',
     backgroundColor: variant === 'primary' ? 'var(--color-primary)' : variant === 'danger' ? 'var(--color-danger)' : 'var(--color-surface)',
     color: variant === 'default' ? 'var(--color-text)' : '#fff',
     border: `1px solid ${variant === 'primary' ? 'var(--color-primary)' : variant === 'danger' ? 'var(--color-danger)' : 'var(--color-border)'}`,
     borderRadius: 'var(--radius-sm)',
     cursor: 'pointer',
-    fontSize: isMobile ? '11px' : '12px',
+    fontSize: isMobile ? '12px' : '12px',
     fontWeight: 600,
     display: 'flex',
     alignItems: 'center',
@@ -112,20 +140,26 @@ export function QuestionViewer({
         <div style={{
           display: 'flex',
           alignItems: 'center',
-          gap: isMobile ? '6px' : '10px',
-          padding: isMobile ? '8px 10px 4px' : '8px 16px',
-          paddingLeft: isMobile ? '50px' : '16px',
+          gap: isMobile ? '8px' : '10px',
+          padding: isMobile ? '12px 12px 8px' : '8px 16px',
+          paddingLeft: isMobile ? '58px' : '16px',
         }}>
-          <span style={{
-            fontSize: isMobile ? '13px' : '13px',
-            fontWeight: 600,
-            color: 'var(--color-text)',
-            marginRight: 'auto',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-            minWidth: 0,
-          }}>
+          <span
+            onClick={() => {
+              if (isMobile) setIsTitleExpanded(!isTitleExpanded);
+            }}
+            style={{
+              fontSize: isMobile ? '14px' : '13px',
+              fontWeight: 600,
+              color: 'var(--color-text)',
+              marginRight: 'auto',
+              overflow: (isMobile && isTitleExpanded) ? 'visible' : 'hidden',
+              textOverflow: (isMobile && isTitleExpanded) ? 'clip' : 'ellipsis',
+              whiteSpace: (isMobile && isTitleExpanded) ? 'normal' : 'nowrap',
+              minWidth: 0,
+              cursor: isMobile ? 'pointer' : 'default',
+              wordBreak: 'break-word',
+            }}>
             {formatLabelId(currentMatch.labelId)}
           </span>
 
@@ -154,9 +188,9 @@ export function QuestionViewer({
         <div style={{
           display: 'flex',
           alignItems: 'center',
-          gap: isMobile ? '6px' : '10px',
-          padding: isMobile ? '4px 10px 8px' : '4px 16px 8px',
-          paddingLeft: isMobile ? '50px' : '16px',
+          gap: isMobile ? '8px' : '10px',
+          padding: isMobile ? '4px 12px 12px' : '4px 16px 8px',
+          paddingLeft: isMobile ? '12px' : '16px',
         }}>
           {/* PDF view dropdown */}
           <div ref={pdfMenuRef} style={{ position: 'relative' }}>
@@ -264,64 +298,88 @@ export function QuestionViewer({
                 maxHeight: (isMobile && isChatOpen) ? '45%' : 'none',
                 borderRadius: 'var(--radius-sm)',
                 paddingBottom: (isMobile && isChatOpen) ? '10px' : '150px',
-                position: 'relative'
+                position: 'relative',
+                backgroundColor: 'var(--color-bg)'
               }}
             >
-              <img
-                src={`/edexcel-gcse-maths-questions/${currentMatch.labelId}`}
-                alt={currentMatch.labelId}
-                onLoad={onImageLoad}
-                style={{
-                  width: '100%',
-                  height: 'auto',
-                  display: 'block',
-                  pointerEvents: annotationMode !== 'none' ? 'none' : 'auto'
-                }}
-              />
-              <canvas
-                ref={questionCanvasRef}
-                onMouseDown={(e) => {
-                  if (annotationMode === 'eraser') {
-                    handleEraserClick(e, 'question');
-                  } else {
-                    handleCanvasMouseDown(e, 'question');
+              <TransformWrapper
+                minScale={qMinScale}
+                maxScale={1}
+                initialScale={1}
+                centerZoomedOut={true}
+                customTransform={(x, y, scale) => {
+                  let newX = x;
+                  if (questionContainerRef.current && scale <= 1) {
+                    const w = questionContainerRef.current.clientWidth;
+                    newX = (w - w * scale) / 2;
                   }
+                  return `translate3d(${newX}px, ${Math.min(y, 0)}px, 0) scale(${scale})`;
                 }}
-                onMouseMove={(e) => handleCanvasMouseMove(e, 'question')}
-                onMouseUp={() => handleCanvasMouseUp('question')}
-                onMouseLeave={() => handleCanvasMouseUp('question')}
-                style={{
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  pointerEvents: annotationMode !== 'none' ? 'auto' : 'none',
-                  cursor: annotationMode === 'pen' ? 'crosshair' : annotationMode === 'text' ? 'text' : annotationMode === 'eraser' ? 'pointer' : 'default'
-                }}
-              />
-              {textInputPos && textInputPos.target === 'question' && (
-                <div style={{ position: 'absolute', left: textInputPos.x, top: textInputPos.y, zIndex: 10 }}>
-                  <input
-                    type="text"
-                    value={textInputValue}
-                    onChange={(e) => setTextInputValue(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') handleTextSubmit();
-                      if (e.key === 'Escape') setTextInputPos(null);
-                    }}
-                    onBlur={handleTextSubmit}
-                    autoFocus
-                    style={{
-                      padding: '4px 8px',
-                      border: '2px solid var(--color-primary)',
-                      borderRadius: 'var(--radius-sm)',
-                      fontSize: '14px',
-                      outline: 'none',
-                      minWidth: '100px'
-                    }}
-                    placeholder="Type and press Enter"
-                  />
-                </div>
-              )}
+                panning={{ disabled: annotationMode !== 'none' }}
+                wheel={{ step: 0.3, disabled: annotationMode !== 'none' }}
+                pinch={{ step: 8, disabled: annotationMode !== 'none' }}
+                doubleClick={{ disabled: true }}
+              >
+                <TransformComponent wrapperStyle={{ width: '100%', minHeight: '100%' }} contentStyle={{ width: '100%' }}>
+                  <div style={{ position: 'relative', width: '100%', backgroundColor: 'var(--color-surface)', boxShadow: 'var(--shadow-sm)' }}>
+                    <img
+                      src={`/edexcel-gcse-maths-questions/${currentMatch.labelId}`}
+                      alt={currentMatch.labelId}
+                      onLoad={handleImageLoad}
+                      style={{
+                        width: '100%',
+                        height: 'auto',
+                        display: 'block',
+                        pointerEvents: annotationMode !== 'none' ? 'none' : 'auto'
+                      }}
+                    />
+                    <canvas
+                      ref={questionCanvasRef}
+                      onMouseDown={(e) => {
+                        if (annotationMode === 'eraser') {
+                          handleEraserClick(e, 'question');
+                        } else {
+                          handleCanvasMouseDown(e, 'question');
+                        }
+                      }}
+                      onMouseMove={(e) => handleCanvasMouseMove(e, 'question')}
+                      onMouseUp={() => handleCanvasMouseUp('question')}
+                      onMouseLeave={() => handleCanvasMouseUp('question')}
+                      style={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        pointerEvents: annotationMode !== 'none' ? 'auto' : 'none',
+                        cursor: annotationMode === 'pen' ? 'crosshair' : annotationMode === 'text' ? 'text' : annotationMode === 'eraser' ? 'pointer' : 'default'
+                      }}
+                    />
+                    {textInputPos && textInputPos.target === 'question' && (
+                      <div style={{ position: 'absolute', left: textInputPos.x, top: textInputPos.y, zIndex: 10 }}>
+                        <input
+                          type="text"
+                          value={textInputValue}
+                          onChange={(e) => setTextInputValue(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') handleTextSubmit();
+                            if (e.key === 'Escape') setTextInputPos(null);
+                          }}
+                          onBlur={handleTextSubmit}
+                          autoFocus
+                          style={{
+                            padding: '4px 8px',
+                            border: '2px solid var(--color-primary)',
+                            borderRadius: 'var(--radius-sm)',
+                            fontSize: '14px',
+                            outline: 'none',
+                            minWidth: '100px'
+                          }}
+                          placeholder="Type and press Enter"
+                        />
+                      </div>
+                    )}
+                  </div>
+                </TransformComponent>
+              </TransformWrapper>
             </div>
             {showMarkscheme && (!isMobile || !isChatOpen) && (
               <div
@@ -331,64 +389,88 @@ export function QuestionViewer({
                   overflowY: 'auto',
                   minHeight: 0,
                   paddingBottom: '150px',
-                  position: 'relative'
+                  position: 'relative',
+                  backgroundColor: 'var(--color-bg)'
                 }}
               >
-                <img
-                  src={`/edexcel-gcse-maths-answers/${currentMatch.labelId}`}
-                  alt={`Markscheme for ${currentMatch.labelId}`}
-                  onLoad={onImageLoad}
-                  style={{
-                    width: '100%',
-                    height: 'auto',
-                    display: 'block',
-                    pointerEvents: annotationMode !== 'none' ? 'none' : 'auto'
-                  }}
-                />
-                <canvas
-                  ref={markschemeCanvasRef}
-                  onMouseDown={(e) => {
-                    if (annotationMode === 'eraser') {
-                      handleEraserClick(e, 'markscheme');
-                    } else {
-                      handleCanvasMouseDown(e, 'markscheme');
+                <TransformWrapper
+                  minScale={mMinScale}
+                  maxScale={1}
+                  initialScale={1}
+                  centerZoomedOut={true}
+                  customTransform={(x, y, scale) => {
+                    let newX = x;
+                    if (markschemeContainerRef.current && scale <= 1) {
+                      const w = markschemeContainerRef.current.clientWidth;
+                      newX = (w - w * scale) / 2;
                     }
+                    return `translate3d(${newX}px, ${Math.min(y, 0)}px, 0) scale(${scale})`;
                   }}
-                  onMouseMove={(e) => handleCanvasMouseMove(e, 'markscheme')}
-                  onMouseUp={() => handleCanvasMouseUp('markscheme')}
-                  onMouseLeave={() => handleCanvasMouseUp('markscheme')}
-                  style={{
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    pointerEvents: annotationMode !== 'none' ? 'auto' : 'none',
-                    cursor: annotationMode === 'pen' ? 'crosshair' : annotationMode === 'text' ? 'text' : annotationMode === 'eraser' ? 'pointer' : 'default'
-                  }}
-                />
-                {textInputPos && textInputPos.target === 'markscheme' && (
-                  <div style={{ position: 'absolute', left: textInputPos.x, top: textInputPos.y, zIndex: 10 }}>
-                    <input
-                      type="text"
-                      value={textInputValue}
-                      onChange={(e) => setTextInputValue(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') handleTextSubmit();
-                        if (e.key === 'Escape') setTextInputPos(null);
-                      }}
-                      onBlur={handleTextSubmit}
-                      autoFocus
-                      style={{
-                        padding: '4px 8px',
-                        border: '2px solid var(--color-primary)',
-                        borderRadius: 'var(--radius-sm)',
-                        fontSize: '14px',
-                        outline: 'none',
-                        minWidth: '100px'
-                      }}
-                      placeholder="Type and press Enter"
-                    />
-                  </div>
-                )}
+                  panning={{ disabled: annotationMode !== 'none' }}
+                  wheel={{ step: 0.3, disabled: annotationMode !== 'none' }}
+                  pinch={{ step: 8, disabled: annotationMode !== 'none' }}
+                  doubleClick={{ disabled: true }}
+                >
+                  <TransformComponent wrapperStyle={{ width: '100%', minHeight: '100%' }} contentStyle={{ width: '100%' }}>
+                    <div style={{ position: 'relative', width: '100%', backgroundColor: 'var(--color-surface)', boxShadow: 'var(--shadow-sm)' }}>
+                      <img
+                        src={`/edexcel-gcse-maths-answers/${currentMatch.labelId}`}
+                        alt={`Markscheme for ${currentMatch.labelId}`}
+                        onLoad={handleImageLoad}
+                        style={{
+                          width: '100%',
+                          height: 'auto',
+                          display: 'block',
+                          pointerEvents: annotationMode !== 'none' ? 'none' : 'auto'
+                        }}
+                      />
+                      <canvas
+                        ref={markschemeCanvasRef}
+                        onMouseDown={(e) => {
+                          if (annotationMode === 'eraser') {
+                            handleEraserClick(e, 'markscheme');
+                          } else {
+                            handleCanvasMouseDown(e, 'markscheme');
+                          }
+                        }}
+                        onMouseMove={(e) => handleCanvasMouseMove(e, 'markscheme')}
+                        onMouseUp={() => handleCanvasMouseUp('markscheme')}
+                        onMouseLeave={() => handleCanvasMouseUp('markscheme')}
+                        style={{
+                          position: 'absolute',
+                          top: 0,
+                          left: 0,
+                          pointerEvents: annotationMode !== 'none' ? 'auto' : 'none',
+                          cursor: annotationMode === 'pen' ? 'crosshair' : annotationMode === 'text' ? 'text' : annotationMode === 'eraser' ? 'pointer' : 'default'
+                        }}
+                      />
+                      {textInputPos && textInputPos.target === 'markscheme' && (
+                        <div style={{ position: 'absolute', left: textInputPos.x, top: textInputPos.y, zIndex: 10 }}>
+                          <input
+                            type="text"
+                            value={textInputValue}
+                            onChange={(e) => setTextInputValue(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') handleTextSubmit();
+                              if (e.key === 'Escape') setTextInputPos(null);
+                            }}
+                            onBlur={handleTextSubmit}
+                            autoFocus
+                            style={{
+                              padding: '4px 8px',
+                              border: '2px solid var(--color-primary)',
+                              borderRadius: 'var(--radius-sm)',
+                              fontSize: '14px',
+                              outline: 'none',
+                              minWidth: '100px'
+                            }}
+                            placeholder="Type and press Enter"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </TransformComponent>
+                </TransformWrapper>
               </div>
             )}
           </div>

@@ -91,14 +91,6 @@ export function Sidebar({
           {showWorksheet ? 'Hide Worksheet' : 'Make Worksheet'}
         </button>
 
-        <button
-          onClick={() => setShowFeedbackForm(!showFeedbackForm)}
-          style={sidebarBtnStyle(showFeedbackForm)}
-        >
-          <MessageSquare size={16} />
-          {showFeedbackForm ? 'Hide Feedback' : 'Request Features'}
-        </button>
-
         {topMatches && topMatches.length > 0 && (
           <button
             onClick={handleDownloadAll}
@@ -114,6 +106,14 @@ export function Sidebar({
           </button>
         )}
 
+        <button
+          onClick={() => setShowFeedbackForm(!showFeedbackForm)}
+          style={sidebarBtnStyle(showFeedbackForm)}
+        >
+          <MessageSquare size={16} />
+          {showFeedbackForm ? 'Hide Feedback' : 'Request Features'}
+        </button>
+
         {showFeedbackForm && <FeedbackForm />}
 
         {showWorksheet && (
@@ -124,38 +124,7 @@ export function Sidebar({
           />
         )}
 
-        <div style={{
-          marginTop: '12px',
-          padding: '14px',
-          border: '1px solid var(--color-border)',
-          borderRadius: 'var(--radius-sm)',
-          backgroundColor: 'var(--color-surface)',
-        }}>
-          <h4 style={{
-            margin: '0 0 8px 0',
-            fontSize: '11px',
-            color: 'var(--color-text-secondary)',
-            fontWeight: 700,
-            textTransform: 'uppercase',
-            letterSpacing: '0.06em'
-          }}>
-            Recent Updates
-          </h4>
-          <ul style={{
-            margin: 0,
-            paddingLeft: '16px',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '4px',
-            color: 'var(--color-text-secondary)',
-            fontSize: '12px',
-            lineHeight: 1.5,
-            listStyleType: 'disc'
-          }}>
-            <li>Added eraser and undo for annotations</li>
-            <li>Fixed bug not allowing drawing after scrolling the question</li>
-          </ul>
-        </div>
+
       </div>
     </div>
   );
@@ -179,20 +148,23 @@ export function Sidebar({
           />
         )}
         <div
-          className={mobileOpen ? 'animate-slide-in-left' : ''}
+          className={mobileOpen ? 'animate-fade-in' : ''}
           style={{
             position: 'fixed',
-            top: 0,
-            left: 0,
-            bottom: 0,
-            width: '280px',
-            maxWidth: '85vw',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            width: '90vw',
+            maxWidth: '350px',
+            maxHeight: '85vh',
             backgroundColor: 'var(--color-surface)',
-            borderRight: '1px solid var(--color-border)',
+            border: '1px solid var(--color-border)',
+            borderRadius: 'var(--radius-lg)',
             zIndex: 50,
             display: mobileOpen ? 'flex' : 'none',
             flexDirection: 'column',
             boxShadow: 'var(--shadow-lg)',
+            overflow: 'hidden',
           }}
         >
           {/* Drawer header */}
