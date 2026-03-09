@@ -235,7 +235,7 @@ function App() {
               color: 'var(--color-text-muted)',
               fontSize: '11px',
             }}>
-              Similar Question 2025
+              Similar Question 2026
             </div>
           </div>
         )}

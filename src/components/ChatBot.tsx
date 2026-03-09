@@ -122,6 +122,7 @@ YOUR RULES:
 7. Use the markscheme to guide the student towards the correct answer shown, but NEVER tell them the direct answer or show them the markscheme directly.
 8. When you reach the FINAL step where you give the complete answer/solution, you MUST end your message with exactly: [SOLUTION COMPLETE]
 9. Use LaTeX notation for all mathematical expressions. Use $...$ for inline math and $$...$$ for display math.
+10. Use UK-style mathematics notation. Specifically, do NOT use the dot for multiplication (use $\\times$ or juxtaposition where appropriate).
 
 Format your response clearly.`;
             } else {
@@ -136,6 +137,7 @@ Your role is to:
 6. Keep responses SHORT and concise (3-5 sentences max)
 7. If they want step-by-step help, tell them to click the "Step by step" button
 8. Use LaTeX notation for all mathematical expressions. Use $...$ for inline math and $$...$$ for display math.
+9. Use UK-style mathematics notation. Specifically, do NOT use the dot for multiplication (use $\\times$ or juxtaposition where appropriate).
 
 Format your response clearly.`;
             }
