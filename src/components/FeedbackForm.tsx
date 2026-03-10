@@ -84,7 +84,7 @@ export function FeedbackForm() {
     padding: '10px 12px',
     borderRadius: 'var(--radius-sm)',
     border: '1px solid var(--color-border)',
-    fontSize: '16px',
+    fontSize: '13px',
     fontFamily: 'var(--font-family)',
     color: 'var(--color-text)',
     outline: 'none',
