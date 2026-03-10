@@ -203,7 +203,7 @@ export function Sidebar({
   return (
     <div style={{
       width: sidebarOpen ? `${openSidebarWidth}px` : '50px',
-      minHeight: '100%',
+      minHeight: '100dvh',
       backgroundColor: 'var(--color-surface)',
       borderRight: '1px solid var(--color-border)',
       display: 'flex',

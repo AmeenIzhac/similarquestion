@@ -91,6 +91,7 @@ export function SearchBar({
         boxShadow: 'var(--shadow-md)',
         display: 'flex',
         flexDirection: 'column',
+        minWidth: 0,
         transition: 'box-shadow var(--transition-fast), border-radius var(--transition-fast)',
       }}
     >
@@ -151,7 +152,7 @@ export function SearchBar({
       )}
 
       {/* Input row */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0 }}>
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
@@ -204,6 +205,7 @@ export function SearchBar({
           rows={1}
           style={{
             flex: 1,
+            minWidth: 0,
             height: 'auto',
             minHeight: '42px',
             padding: '10px 8px',
