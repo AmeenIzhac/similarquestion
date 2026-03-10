@@ -369,7 +369,7 @@ export function QuestionViewer({
                             padding: '4px 8px',
                             border: '2px solid var(--color-primary)',
                             borderRadius: 'var(--radius-sm)',
-                            fontSize: '14px',
+                            fontSize: '16px',
                             outline: 'none',
                             minWidth: '100px'
                           }}
@@ -460,7 +460,7 @@ export function QuestionViewer({
                               padding: '4px 8px',
                               border: '2px solid var(--color-primary)',
                               borderRadius: 'var(--radius-sm)',
-                              fontSize: '14px',
+                              fontSize: '16px',
                               outline: 'none',
                               minWidth: '100px'
                             }}

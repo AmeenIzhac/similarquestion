@@ -31,7 +31,7 @@ export function FilterModal({
     padding: '10px 12px',
     border: '1px solid var(--color-border)',
     borderRadius: 'var(--radius-sm)',
-    fontSize: '14px',
+    fontSize: '16px',
     background: 'var(--color-surface)',
     fontFamily: 'var(--font-family)',
     color: 'var(--color-text)',
