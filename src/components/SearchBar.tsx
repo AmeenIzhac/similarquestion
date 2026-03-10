@@ -209,7 +209,7 @@ export function SearchBar({
             padding: '10px 8px',
             border: 'none',
             outline: 'none',
-            fontSize: isMobile ? '16px' : '15px',
+            fontSize: '16px',
             resize: 'none',
             boxSizing: 'border-box',
             background: 'transparent',
