@@ -302,6 +302,7 @@ function App() {
             left: 0,
             right: 0,
             padding: isMobile ? '10px 0' : '16px 0',
+            paddingBottom: isMobile ? 'calc(10px + env(safe-area-inset-bottom, 0px))' : '16px',
             background: 'linear-gradient(to top, var(--color-surface) 70%, transparent)',
           }}>
             <div style={{
