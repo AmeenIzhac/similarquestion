@@ -58,6 +58,9 @@ body {
   -moz-osx-font-smoothing: grayscale;
   color: var(--color-text);
   background: var(--color-bg);
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
 }
 
 /* Scrollbar */
