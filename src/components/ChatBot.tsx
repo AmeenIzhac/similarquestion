@@ -654,7 +654,7 @@ Format your response clearly.`;
                         padding: '12px 16px',
                         border: '1px solid #e5e5e5',
                         borderRadius: '24px',
-                        fontSize: '13px',
+                        fontSize: '16px',
                         outline: 'none',
                         backgroundColor: '#f9fafb',
                         transition: 'border-color 0.2s, box-shadow 0.2s'
