@@ -59,7 +59,19 @@ body {
   color: var(--color-text);
   background: var(--color-bg);
   height: 100vh;
-  height: 100dvh;
+  /* Use fill-available and fixed to lock iOS Safari */
+  height: -webkit-fill-available;
+  width: 100%;
+  position: fixed;
+  top: 0;
+  left: 0;
+  overflow: hidden;
+  overscroll-behavior-y: none;
+}
+
+#root {
+  height: 100%;
+  width: 100%;
   overflow: hidden;
 }
 
