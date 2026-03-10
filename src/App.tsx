@@ -131,7 +131,7 @@ function App() {
   const isLanding = !hasStarted && !isProcessing && (!currentMatch || currentMatch.labelId === 'error');
 
   return (
-    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', backgroundColor: 'var(--color-bg)' }}>
+    <div style={{ display: 'flex', height: '100dvh', overflow: 'hidden', backgroundColor: 'var(--color-bg)' }}>
       <Sidebar
         isMobile={isMobile}
         annotationMode={annotationMode}
@@ -150,7 +150,7 @@ function App() {
       <div style={{
         flex: 1,
         position: 'relative',
-        height: '100vh',
+        height: '100dvh',
         display: 'flex',
         flexDirection: 'column',
         overflow: 'hidden',
