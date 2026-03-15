@@ -1,4 +1,4 @@
-import type { LevelFilter, CalculatorFilter, SearchMethod } from '../types/index';
+import type { LevelFilter, CalculatorFilter } from '../types/index';
 
 interface FilterModalProps {
   levelFilter: LevelFilter;
@@ -7,9 +7,6 @@ interface FilterModalProps {
   setCalculatorFilter: (filter: CalculatorFilter) => void;
   numMatches: number;
   setNumMatches: (num: number) => void;
-  searchMethod: SearchMethod;
-  setSearchMethod: (method: SearchMethod) => void;
-  hasSearchMethod2: boolean;
   onClose: () => void;
   onApply: () => void;
 }
@@ -21,9 +18,6 @@ export function FilterModal({
   setCalculatorFilter,
   numMatches,
   setNumMatches,
-  searchMethod,
-  setSearchMethod,
-  hasSearchMethod2,
   onClose,
   onApply
 }: FilterModalProps) {
@@ -139,19 +133,6 @@ export function FilterModal({
               }}
               style={{ ...selectStyle }}
             />
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            <label style={{ fontSize: '13px', color: 'var(--color-text)', fontWeight: 600 }}>Search Method</label>
-            <select value={searchMethod} onChange={(e) => setSearchMethod(e.target.value as SearchMethod)} style={selectStyle}>
-              <option value="method1">Method 1</option>
-              <option value="method2" disabled={!hasSearchMethod2}>Method 2</option>
-            </select>
-            {!hasSearchMethod2 && (
-              <span style={{ fontSize: '11px', color: 'var(--color-text-muted)' }}>
-                Method 2 requires Host 2 configuration.
-              </span>
-            )}
           </div>
 
           <div style={{ display: 'flex', gap: '10px', marginTop: '8px' }}>

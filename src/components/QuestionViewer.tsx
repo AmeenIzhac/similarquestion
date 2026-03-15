@@ -107,6 +107,35 @@ export function QuestionViewer({
     return () => document.removeEventListener('mousedown', handleMouseDown);
   }, [pdfMenuOpen]);
 
+  // Intercept wheel events to allow native scrolling but keep trackpad pinch-to-zoom
+  useEffect(() => {
+    const handleWheel = (e: WheelEvent) => {
+      // If ctrlKey is not pressed, it is a normal scroll, not a pinch.
+      if (!e.ctrlKey) {
+        e.stopPropagation();
+      }
+    };
+
+    const qContainer = questionContainerRef.current;
+    const mContainer = markschemeContainerRef.current;
+    
+    if (qContainer) {
+      qContainer.addEventListener('wheel', handleWheel, { capture: true, passive: false });
+    }
+    if (mContainer) {
+      mContainer.addEventListener('wheel', handleWheel, { capture: true, passive: false });
+    }
+
+    return () => {
+      if (qContainer) {
+        qContainer.removeEventListener('wheel', handleWheel, { capture: true });
+      }
+      if (mContainer) {
+        mContainer.removeEventListener('wheel', handleWheel, { capture: true });
+      }
+    };
+  }, [questionContainerRef, markschemeContainerRef, showMarkscheme, isMobile, isChatOpen]);
+
   const documentBase = useMemo(() => getDocumentBaseFromLabel(currentMatch?.labelId), [currentMatch?.labelId]);
   const paperPdfUrl = documentBase ? `/edexcel-gcse-maths-papers/${documentBase}.pdf` : null;
   const markschemePdfUrl = documentBase ? `/edexcel-gcse-maths-markschemes/${documentBase}.pdf` : null;
