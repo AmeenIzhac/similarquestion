@@ -26,7 +26,7 @@ export interface FormStatus {
 
 export type LevelFilter = 'all' | 'h' | 'f';
 export type CalculatorFilter = 'all' | 'calculator' | 'non-calculator';
-export type SearchMethod = 'method1' | 'method2';
+
 export type ViewMode = 'question' | 'paper' | 'markscheme';
 export type AnnotationMode = 'none' | 'pen' | 'text' | 'eraser';
 export type PdfMode = 'questions' | 'answers' | 'interleaved';

@@ -1,13 +1,12 @@
 import { useState, useCallback, useEffect } from 'react';
 import { Mistral } from '@mistralai/mistralai';
 import { searchPinecone, convertFileToBase64 } from '../utils/api';
-import type { Match, LevelFilter, CalculatorFilter, SearchMethod } from '../types/index';
+import type { Match, LevelFilter, CalculatorFilter } from '../types/index';
 
 interface UseSearchProps {
   levelFilter: LevelFilter;
   calculatorFilter: CalculatorFilter;
   numMatches: number;
-  searchMethod: SearchMethod;
 }
 
 const ERROR_MATCH: Match = {
@@ -16,7 +15,7 @@ const ERROR_MATCH: Match = {
   similarity: 0
 };
 
-export function useSearch({ levelFilter, calculatorFilter, numMatches, searchMethod }: UseSearchProps) {
+export function useSearch({ levelFilter, calculatorFilter, numMatches }: UseSearchProps) {
   const [client, setClient] = useState<Mistral | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [topMatches, setTopMatches] = useState<Match[]>([]);
@@ -49,7 +48,7 @@ export function useSearch({ levelFilter, calculatorFilter, numMatches, searchMet
     
     setIsProcessing(true);
     try {
-      const pineconeResults = await searchPinecone(text, numMatches, levelFilter, calculatorFilter, searchMethod);
+      const pineconeResults = await searchPinecone(text, numMatches, levelFilter, calculatorFilter);
       
       if (pineconeResults && pineconeResults.result && pineconeResults.result.hits) {
         const matches: Match[] = pineconeResults.result.hits.map((hit: { _id: string; fields?: { chunk_text?: string }; _score: number }) => ({
@@ -70,7 +69,7 @@ export function useSearch({ levelFilter, calculatorFilter, numMatches, searchMet
     } finally {
       setIsProcessing(false);
     }
-  }, [levelFilter, calculatorFilter, numMatches, searchMethod]);
+  }, [levelFilter, calculatorFilter, numMatches]);
 
   const processImageWithOCR = useCallback(async (file: File) => {
     if (!client) {
@@ -93,7 +92,7 @@ export function useSearch({ levelFilter, calculatorFilter, numMatches, searchMet
       
       const extractedText = ocrResponse.pages?.[0]?.markdown || 'No text found';
       
-      const pineconeResults = await searchPinecone(extractedText, numMatches, levelFilter, calculatorFilter, searchMethod);
+      const pineconeResults = await searchPinecone(extractedText, numMatches, levelFilter, calculatorFilter);
       
       if (pineconeResults && pineconeResults.result && pineconeResults.result.hits) {
         const matches: Match[] = pineconeResults.result.hits.map((hit: { _id: string; fields?: { chunk_text?: string }; _score: number }) => ({
@@ -114,7 +113,7 @@ export function useSearch({ levelFilter, calculatorFilter, numMatches, searchMet
     } finally {
       setIsProcessing(false);
     }
-  }, [client, levelFilter, calculatorFilter, numMatches, searchMethod]);
+  }, [client, levelFilter, calculatorFilter, numMatches]);
 
   return {
     isProcessing,

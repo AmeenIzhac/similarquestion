@@ -1,16 +1,14 @@
-import type { LevelFilter, CalculatorFilter, SearchMethod } from '../types/index';
+import type { LevelFilter, CalculatorFilter } from '../types/index';
 
 export const searchPinecone = async (
   query: string,
   topK: number = 25,
   levelFilter: LevelFilter = 'all',
-  calculatorFilter: CalculatorFilter = 'all',
-  searchMethod: SearchMethod = 'method1'
+  calculatorFilter: CalculatorFilter = 'all'
 ) => {
   try {
     const pineconeApiKey = import.meta.env.VITE_PINECONE_API_KEY;
-    const indexHost1 = import.meta.env.VITE_PINECONE_INDEX_HOST1;
-    const indexHost2 = import.meta.env.VITE_PINECONE_INDEX_HOST2;
+    const indexHost = import.meta.env.VITE_PINECONE_INDEX_HOST;
     const namespace = import.meta.env.VITE_PINECONE_NAMESPACE || 'example-namespace';
     
     if (!pineconeApiKey) {
@@ -18,10 +16,8 @@ export const searchPinecone = async (
       return null;
     }
 
-    const selectedHost = searchMethod === 'method2' ? indexHost2 : indexHost1;
-
-    if (!selectedHost) {
-      console.error(`Pinecone index host not configured for ${searchMethod}`);
+    if (!indexHost) {
+      console.error(`Pinecone index host not configured`);
       return null;
     }
 
@@ -41,7 +37,7 @@ export const searchPinecone = async (
     // If no filters applied, set to undefined
     const finalFilter = Object.keys(filter).length === 0 ? undefined : filter;
 
-    const response = await fetch(`https://${selectedHost}/records/namespaces/${namespace}/search`, {
+    const response = await fetch(`https://${indexHost}/records/namespaces/${namespace}/search`, {
       method: 'POST',
       headers: {
         'Accept': 'application/json',

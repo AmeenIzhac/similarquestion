@@ -3,15 +3,13 @@ import { Sidebar, SearchBar, FilterModal, LoadingOverlay, QuestionViewer } from 
 import { useAnnotations } from './hooks/useAnnotations';
 import { useSearch } from './hooks/useSearch';
 import { Menu } from 'lucide-react';
-import type { LevelFilter, CalculatorFilter, SearchMethod, ViewMode } from './types/index';
+import type { LevelFilter, CalculatorFilter, ViewMode } from './types/index';
 
 function App() {
   // Filter state
   const [levelFilter, setLevelFilter] = useState<LevelFilter>('all');
   const [calculatorFilter, setCalculatorFilter] = useState<CalculatorFilter>('all');
   const [numMatches, setNumMatches] = useState<number>(25);
-  const [searchMethod, setSearchMethod] = useState<SearchMethod>('method1');
-  const hasSearchMethod2 = Boolean(import.meta.env.VITE_PINECONE_INDEX_HOST2);
 
   // UI state
   const [searchText, setSearchText] = useState<string>('');
@@ -37,7 +35,7 @@ function App() {
     nextMatch,
     prevMatch,
     searchByText
-  } = useSearch({ levelFilter, calculatorFilter, numMatches, searchMethod });
+  } = useSearch({ levelFilter, calculatorFilter, numMatches });
 
   // Annotation hook
   const {
@@ -355,9 +353,6 @@ function App() {
             setCalculatorFilter={setCalculatorFilter}
             numMatches={numMatches}
             setNumMatches={setNumMatches}
-            searchMethod={searchMethod}
-            setSearchMethod={setSearchMethod}
-            hasSearchMethod2={hasSearchMethod2}
             onClose={() => setShowCenterFilter(false)}
             onApply={handleApplyFilters}
           />
