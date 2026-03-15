@@ -35,23 +35,23 @@ export function WorksheetPanel({
     <div style={{
       marginTop: '15px',
       padding: '12px',
-      border: '1px solid #e5e5e5',
-      borderRadius: '6px',
-      backgroundColor: '#fff',
+      border: '1px solid var(--color-border)',
+      borderRadius: 'var(--radius-sm)',
+      backgroundColor: 'var(--color-surface)',
       display: 'flex',
       flexDirection: 'column',
       gap: '10px'
     }}>
       <div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-          <h4 style={{ margin: 0, fontSize: '13px', color: '#333', fontWeight: 'bold' }}>Worksheet</h4>
+          <h4 style={{ margin: 0, fontSize: '13px', color: 'var(--color-text)', fontWeight: 'bold' }}>Worksheet</h4>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <button
               onClick={onHide}
               style={{
                 background: 'transparent',
                 border: 'none',
-                color: '#6b7280',
+                color: 'var(--color-text-secondary)',
                 cursor: 'pointer',
                 fontSize: '12px',
                 fontWeight: 600,
@@ -71,11 +71,11 @@ export function WorksheetPanel({
                 }}
                 disabled={selectedQuestions.length === 0 || isSavingPdf}
                 style={{
-                  backgroundColor: selectedQuestions.length === 0 || isSavingPdf ? '#c9c9c9' : '#10a37f',
+                  backgroundColor: selectedQuestions.length === 0 || isSavingPdf ? 'var(--color-text-muted)' : 'var(--color-primary)',
                   color: '#fff',
-                  border: selectedQuestions.length === 0 || isSavingPdf ? '1px solid #c9c9c9' : '1px solid #10a37f',
+                  border: selectedQuestions.length === 0 || isSavingPdf ? '1px solid var(--color-text-muted)' : '1px solid var(--color-primary)',
                   padding: '6px 12px',
-                  borderRadius: '4px',
+                  borderRadius: 'var(--radius-sm)',
                   cursor: selectedQuestions.length === 0 || isSavingPdf ? 'not-allowed' : 'pointer',
                   fontSize: '12px',
                   display: 'flex',
@@ -92,14 +92,14 @@ export function WorksheetPanel({
                 style={{
                   position: 'absolute',
                   right: 0,
-                  backgroundColor: '#ffffff',
-                  borderRadius: '4px',
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                  backgroundColor: 'var(--color-surface)',
+                  borderRadius: 'var(--radius-sm)',
+                  boxShadow: 'var(--shadow-md)',
                   zIndex: 10,
                   marginTop: '4px',
                   minWidth: '160px',
                   display: 'none',
-                  border: '1px solid #e5e5e5'
+                  border: '1px solid var(--color-border)'
                 }}
                 id="downloadDropdown"
               >
@@ -114,10 +114,10 @@ export function WorksheetPanel({
                       padding: '8px 16px',
                       cursor: 'pointer',
                       fontSize: '13px',
-                      color: '#111',
+                      color: 'var(--color-text)',
                       backgroundColor: 'transparent',
                       transition: 'all 0.2s',
-                      borderBottom: mode === 'interleaved' ? 'none' : '1px solid #f5f5f5',
+                      borderBottom: mode === 'interleaved' ? 'none' : '1px solid var(--color-border-light)',
                       ...(mode === 'interleaved' && {
                         borderBottomLeftRadius: '4px',
                         borderBottomRightRadius: '4px'
@@ -148,9 +148,9 @@ export function WorksheetPanel({
         </div>
 
         <div style={{
-          backgroundColor: '#ffffff',
-          borderRadius: '4px',
-          border: '1px dashed #e5e5e5',
+          backgroundColor: 'var(--color-surface)',
+          borderRadius: 'var(--radius-sm)',
+          border: '1px dashed var(--color-border)',
           padding: '16px',
           textAlign: 'center',
           marginBottom: '10px',
@@ -178,8 +178,8 @@ export function WorksheetPanel({
                     height: '60px',
                     borderRadius: '4px',
                     overflow: 'hidden',
-                    border: '1px solid #e8e8e8',
-                    backgroundColor: '#fafafa'
+                    border: '1px solid var(--color-border)',
+                    backgroundColor: 'var(--color-surface-alt)'
                   }}
                   onMouseEnter={() => setHoveredSelected(labelId)}
                   onMouseLeave={() => setHoveredSelected(null)}
@@ -229,7 +229,7 @@ export function WorksheetPanel({
               ))}
             </div>
           ) : (
-            <p style={{ margin: 0, fontSize: '13px', color: '#8c8c8c' }}>
+            <p style={{ margin: 0, fontSize: '13px', color: 'var(--color-text-muted)' }}>
               Once you select questions for the worksheet they'll appear here
             </p>
           )}

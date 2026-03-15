@@ -16,9 +16,9 @@ export function AnnotationTools({
   const buttonStyle = (isActive: boolean, isDanger = false): React.CSSProperties => ({
     flex: 1,
     padding: '8px 10px',
-    backgroundColor: isActive ? '#2563eb' : isDanger ? 'var(--color-danger)' : 'var(--color-surface)',
+    backgroundColor: isActive ? 'var(--color-primary)' : isDanger ? 'var(--color-danger)' : 'var(--color-surface)',
     color: isActive ? '#fff' : isDanger ? '#fff' : 'var(--color-text)',
-    border: `1px solid ${isActive ? '#2563eb' : isDanger ? 'var(--color-danger)' : 'var(--color-border)'}`,
+    border: `1px solid ${isActive ? 'var(--color-primary)' : isDanger ? 'var(--color-danger)' : 'var(--color-border)'}`,
     borderRadius: 'var(--radius-sm)',
     cursor: 'pointer',
     fontSize: '12px',
