@@ -300,8 +300,8 @@ Format your response clearly.`;
     return (
         <div style={isInline ? {
             flex: 1,
-            backgroundColor: 'var(--color-surface, #ffffff)',
-            borderTop: '1px solid var(--color-border, #e5e5e5)',
+            backgroundColor: 'var(--color-surface)',
+            borderTop: '1px solid var(--color-border)',
             display: 'flex',
             flexDirection: 'column',
             zIndex: 10,
@@ -313,21 +313,21 @@ Format your response clearly.`;
             top: 0,
             bottom: 0,
             width: '380px',
-            backgroundColor: '#ffffff',
-            borderLeft: '1px solid #e5e5e5',
+            backgroundColor: 'var(--color-surface)',
+            borderLeft: '1px solid var(--color-border)',
             display: 'flex',
             flexDirection: 'column',
             zIndex: 100,
-            boxShadow: '-4px 0 20px rgba(0, 0, 0, 0.08)'
+            boxShadow: '-4px 0 20px rgba(0, 0, 0, 0.06)'
         }}>
             {/* Header */}
             <div style={{
                 padding: '16px 20px',
-                borderBottom: '1px solid #e5e5e5',
+                borderBottom: '1px solid var(--color-border)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                backgroundColor: '#10a37f'
+                backgroundColor: 'var(--color-primary)'
             }}>
                 <div>
                     <div style={{ fontWeight: 600, color: '#ffffff', fontSize: '15px' }}>
@@ -368,14 +368,14 @@ Format your response clearly.`;
                 display: 'flex',
                 flexDirection: 'column',
                 gap: '16px',
-                backgroundColor: '#f9fafb'
+                backgroundColor: 'var(--color-bg)'
             }}>
                 {messages.length === 0 && !streamingContent && (
                     <div style={{ textAlign: 'center', padding: '40px 20px' }}>
-                        <h3 style={{ margin: '0 0 8px', fontSize: '16px', fontWeight: 600, color: '#333' }}>
+                        <h3 style={{ margin: '0 0 8px', fontSize: '16px', fontWeight: 600, color: 'var(--color-text)' }}>
                             Need help with this question?
                         </h3>
-                        <p style={{ margin: '0 0 24px', fontSize: '13px', color: '#666', lineHeight: 1.5 }}>
+                        <p style={{ margin: '0 0 24px', fontSize: '13px', color: 'var(--color-text-secondary)', lineHeight: 1.5 }}>
                             I can see the question image and help you solve it step by step.
                         </p>
 
@@ -385,12 +385,12 @@ Format your response clearly.`;
                                 onClick={() => handleQuickAction('explain')}
                                 style={{
                                     padding: '12px 16px',
-                                    backgroundColor: '#ffffff',
-                                    border: '1px solid #e5e5e5',
-                                    borderRadius: '10px',
+                                    backgroundColor: 'var(--color-surface)',
+                                    border: '1px solid var(--color-border)',
+                                    borderRadius: '12px',
                                     cursor: 'pointer',
                                     fontSize: '13px',
-                                    color: '#333',
+                                    color: 'var(--color-text)',
                                     textAlign: 'left',
                                     transition: 'all 0.2s',
                                     display: 'flex',
@@ -398,12 +398,12 @@ Format your response clearly.`;
                                     gap: '10px'
                                 }}
                                 onMouseOver={(e) => {
-                                    e.currentTarget.style.backgroundColor = '#f3f4f6';
-                                    e.currentTarget.style.borderColor = '#10a37f';
+                                    e.currentTarget.style.backgroundColor = 'var(--color-primary-light)';
+                                    e.currentTarget.style.borderColor = 'var(--color-primary)';
                                 }}
                                 onMouseOut={(e) => {
-                                    e.currentTarget.style.backgroundColor = '#ffffff';
-                                    e.currentTarget.style.borderColor = '#e5e5e5';
+                                    e.currentTarget.style.backgroundColor = 'var(--color-surface)';
+                                    e.currentTarget.style.borderColor = 'var(--color-border)';
                                 }}
                             >
                                 Step by step
@@ -412,12 +412,12 @@ Format your response clearly.`;
                                 onClick={() => handleQuickAction('hint')}
                                 style={{
                                     padding: '12px 16px',
-                                    backgroundColor: '#ffffff',
-                                    border: '1px solid #e5e5e5',
-                                    borderRadius: '10px',
+                                    backgroundColor: 'var(--color-surface)',
+                                    border: '1px solid var(--color-border)',
+                                    borderRadius: '12px',
                                     cursor: 'pointer',
                                     fontSize: '13px',
-                                    color: '#333',
+                                    color: 'var(--color-text)',
                                     textAlign: 'left',
                                     transition: 'all 0.2s',
                                     display: 'flex',
@@ -425,12 +425,12 @@ Format your response clearly.`;
                                     gap: '10px'
                                 }}
                                 onMouseOver={(e) => {
-                                    e.currentTarget.style.backgroundColor = '#f3f4f6';
-                                    e.currentTarget.style.borderColor = '#10a37f';
+                                    e.currentTarget.style.backgroundColor = 'var(--color-primary-light)';
+                                    e.currentTarget.style.borderColor = 'var(--color-primary)';
                                 }}
                                 onMouseOut={(e) => {
-                                    e.currentTarget.style.backgroundColor = '#ffffff';
-                                    e.currentTarget.style.borderColor = '#e5e5e5';
+                                    e.currentTarget.style.backgroundColor = 'var(--color-surface)';
+                                    e.currentTarget.style.borderColor = 'var(--color-border)';
                                 }}
                             >
                                 Give me a hint
@@ -439,12 +439,12 @@ Format your response clearly.`;
                                 onClick={() => handleQuickAction('concept')}
                                 style={{
                                     padding: '12px 16px',
-                                    backgroundColor: '#ffffff',
-                                    border: '1px solid #e5e5e5',
-                                    borderRadius: '10px',
+                                    backgroundColor: 'var(--color-surface)',
+                                    border: '1px solid var(--color-border)',
+                                    borderRadius: '12px',
                                     cursor: 'pointer',
                                     fontSize: '13px',
-                                    color: '#333',
+                                    color: 'var(--color-text)',
                                     textAlign: 'left',
                                     transition: 'all 0.2s',
                                     display: 'flex',
@@ -452,12 +452,12 @@ Format your response clearly.`;
                                     gap: '10px'
                                 }}
                                 onMouseOver={(e) => {
-                                    e.currentTarget.style.backgroundColor = '#f3f4f6';
-                                    e.currentTarget.style.borderColor = '#10a37f';
+                                    e.currentTarget.style.backgroundColor = 'var(--color-primary-light)';
+                                    e.currentTarget.style.borderColor = 'var(--color-primary)';
                                 }}
                                 onMouseOut={(e) => {
-                                    e.currentTarget.style.backgroundColor = '#ffffff';
-                                    e.currentTarget.style.borderColor = '#e5e5e5';
+                                    e.currentTarget.style.backgroundColor = 'var(--color-surface)';
+                                    e.currentTarget.style.borderColor = 'var(--color-border)';
                                 }}
                             >
                                 What concepts do I need?
@@ -478,11 +478,11 @@ Format your response clearly.`;
                             maxWidth: '85%',
                             padding: '12px 16px',
                             borderRadius: message.role === 'user' ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
-                            backgroundColor: message.role === 'user' ? '#10a37f' : '#ffffff',
-                            color: message.role === 'user' ? '#ffffff' : '#333',
+                            backgroundColor: message.role === 'user' ? 'var(--color-primary-light)' : 'var(--color-surface)',
+                            color: 'var(--color-text)',
                             fontSize: '14px',
                             lineHeight: 1.7,
-                            boxShadow: message.role === 'assistant' ? '0 1px 3px rgba(0, 0, 0, 0.08)' : 'none'
+                            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.06)'
                         }}>
                             {message.role === 'assistant' ? (
                                 <ReactMarkdown
@@ -505,11 +505,11 @@ Format your response clearly.`;
                             maxWidth: '85%',
                             padding: '12px 16px',
                             borderRadius: '16px 16px 16px 4px',
-                            backgroundColor: '#ffffff',
-                            color: '#333',
+                            backgroundColor: 'var(--color-surface)',
+                            color: 'var(--color-text)',
                             fontSize: '14px',
                             lineHeight: 1.7,
-                            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.08)'
+                            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.06)'
                         }}>
                             <ReactMarkdown
                                 remarkPlugins={[remarkMath]}
@@ -522,7 +522,7 @@ Format your response clearly.`;
                                 display: 'inline-block',
                                 width: '8px',
                                 height: '16px',
-                                backgroundColor: '#10a37f',
+                                backgroundColor: 'var(--color-primary)',
                                 marginLeft: '2px',
                                 animation: 'blink 1s infinite'
                             }} />
@@ -535,15 +535,15 @@ Format your response clearly.`;
                         <div style={{
                             padding: '12px 20px',
                             borderRadius: '16px 16px 16px 4px',
-                            backgroundColor: '#ffffff',
-                            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.08)',
+                            backgroundColor: 'var(--color-surface)',
+                            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.06)',
                             display: 'flex',
                             gap: '6px'
                         }}>
                             <span style={{
                                 width: '8px',
                                 height: '8px',
-                                backgroundColor: '#10a37f',
+                                backgroundColor: 'var(--color-primary)',
                                 borderRadius: '50%',
                                 animation: 'bounce 1.4s infinite ease-in-out',
                                 animationDelay: '0s'
@@ -551,7 +551,7 @@ Format your response clearly.`;
                             <span style={{
                                 width: '8px',
                                 height: '8px',
-                                backgroundColor: '#10a37f',
+                                backgroundColor: 'var(--color-primary)',
                                 borderRadius: '50%',
                                 animation: 'bounce 1.4s infinite ease-in-out',
                                 animationDelay: '0.2s'
@@ -559,7 +559,7 @@ Format your response clearly.`;
                             <span style={{
                                 width: '8px',
                                 height: '8px',
-                                backgroundColor: '#10a37f',
+                                backgroundColor: 'var(--color-primary)',
                                 borderRadius: '50%',
                                 animation: 'bounce 1.4s infinite ease-in-out',
                                 animationDelay: '0.4s'
@@ -575,8 +575,8 @@ Format your response clearly.`;
             {isInStepMode && messages.length > 0 && !isLoading && (
                 <div style={{
                     padding: '12px 20px',
-                    borderTop: '1px solid #e5e5e5',
-                    backgroundColor: isSolutionComplete ? '#e8f5e9' : '#f0fdf4',
+                    borderTop: '1px solid var(--color-border)',
+                    backgroundColor: 'var(--color-primary-light)',
                     display: 'flex',
                     flexDirection: 'column',
                     gap: '10px'
@@ -586,7 +586,7 @@ Format your response clearly.`;
                         <p style={{
                             margin: 0,
                             textAlign: 'center',
-                            color: '#10a37f',
+                            color: 'var(--color-primary)',
                             fontSize: '14px',
                             fontWeight: 600
                         }}>
@@ -600,10 +600,10 @@ Format your response clearly.`;
                                 style={{
                                     width: '100%',
                                     padding: '12px 16px',
-                                    backgroundColor: '#10a37f',
+                                    backgroundColor: 'var(--color-primary)',
                                     color: '#ffffff',
                                     border: 'none',
-                                    borderRadius: '10px',
+                                    borderRadius: '12px',
                                     cursor: 'pointer',
                                     fontSize: '13px',
                                     fontWeight: 600,
@@ -621,7 +621,7 @@ Format your response clearly.`;
                             <p style={{
                                 margin: 0,
                                 fontSize: '12px',
-                                color: '#666',
+                                color: 'var(--color-text-secondary)',
                                 textAlign: 'center'
                             }}>
                                 Don't understand? Type your question below instead
@@ -636,8 +636,8 @@ Format your response clearly.`;
                 onSubmit={handleSubmit}
                 style={{
                     padding: '16px 20px',
-                    borderTop: '1px solid #e5e5e5',
-                    backgroundColor: '#ffffff',
+                    borderTop: '1px solid var(--color-border)',
+                    backgroundColor: 'var(--color-surface)',
                     display: 'flex',
                     gap: '10px'
                 }}
@@ -652,19 +652,19 @@ Format your response clearly.`;
                     style={{
                         flex: 1,
                         padding: '12px 16px',
-                        border: '1px solid #e5e5e5',
+                        border: '1px solid var(--color-border)',
                         borderRadius: '24px',
                         fontSize: '16px',
                         outline: 'none',
-                        backgroundColor: '#f9fafb',
+                        backgroundColor: 'var(--color-bg)',
                         transition: 'border-color 0.2s, box-shadow 0.2s'
                     }}
                     onFocus={(e) => {
-                        e.currentTarget.style.borderColor = '#10a37f';
-                        e.currentTarget.style.boxShadow = '0 0 0 3px rgba(16, 163, 127, 0.1)';
+                        e.currentTarget.style.borderColor = 'var(--color-primary)';
+                        e.currentTarget.style.boxShadow = 'var(--shadow-focus)';
                     }}
                     onBlur={(e) => {
-                        e.currentTarget.style.borderColor = '#e5e5e5';
+                        e.currentTarget.style.borderColor = 'var(--color-border)';
                         e.currentTarget.style.boxShadow = 'none';
                     }}
                 />
@@ -673,8 +673,8 @@ Format your response clearly.`;
                     disabled={isLoading || !inputValue.trim()}
                     style={{
                         padding: '12px 20px',
-                        backgroundColor: isLoading || !inputValue.trim() ? '#e5e5e5' : '#10a37f',
-                        color: isLoading || !inputValue.trim() ? '#999' : '#ffffff',
+                        backgroundColor: isLoading || !inputValue.trim() ? 'var(--color-border)' : 'var(--color-primary)',
+                        color: isLoading || !inputValue.trim() ? 'var(--color-text-muted)' : '#ffffff',
                         border: 'none',
                         borderRadius: '24px',
                         cursor: isLoading || !inputValue.trim() ? 'not-allowed' : 'pointer',
