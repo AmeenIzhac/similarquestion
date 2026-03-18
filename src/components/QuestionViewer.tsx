@@ -345,8 +345,8 @@ export function QuestionViewer({
                   return `translate3d(${newX}px, ${Math.min(y, 0)}px, 0) scale(${scale})`;
                 }}
                 panning={{ disabled: annotationMode !== 'none' }}
-                wheel={{ step: 0.3, disabled: annotationMode !== 'none' }}
-                pinch={{ step: 8, disabled: annotationMode !== 'none' }}
+                wheel={{ step: 0.5, disabled: annotationMode !== 'none' }}
+                pinch={{ step: 15, disabled: annotationMode !== 'none' }}
                 doubleClick={{ disabled: true }}
               >
                 <TransformComponent wrapperStyle={{ width: '100%', minHeight: '100%' }} contentStyle={{ width: '100%' }}>
@@ -436,8 +436,8 @@ export function QuestionViewer({
                     return `translate3d(${newX}px, ${Math.min(y, 0)}px, 0) scale(${scale})`;
                   }}
                   panning={{ disabled: annotationMode !== 'none' }}
-                  wheel={{ step: 0.3, disabled: annotationMode !== 'none' }}
-                  pinch={{ step: 8, disabled: annotationMode !== 'none' }}
+                  wheel={{ step: 0.5, disabled: annotationMode !== 'none' }}
+                  pinch={{ step: 15, disabled: annotationMode !== 'none' }}
                   doubleClick={{ disabled: true }}
                 >
                   <TransformComponent wrapperStyle={{ width: '100%', minHeight: '100%' }} contentStyle={{ width: '100%' }}>
