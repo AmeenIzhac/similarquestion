@@ -116,11 +116,16 @@ export function FilterModal({
               value={numMatches}
               onChange={(e) => {
                 const value = e.target.value;
-                if (value === '') return;
+                if (value === '') {
+                  setNumMatches('' as any);
+                  return;
+                }
                 const digits = value.replace(/\D/g, '');
                 if (digits) {
                   const num = parseInt(digits, 10);
-                  if (num >= 1 && num <= 50) setNumMatches(num);
+                  if (num >= 1 && num <= 50) {
+                    setNumMatches(num);
+                  }
                 }
               }}
               onBlur={(e) => {
