@@ -24,6 +24,9 @@ interface QuestionViewerProps {
   handleCanvasMouseDown: (e: React.MouseEvent<HTMLCanvasElement>, target: 'question' | 'markscheme') => void;
   handleCanvasMouseMove: (e: React.MouseEvent<HTMLCanvasElement>, target: 'question' | 'markscheme') => void;
   handleCanvasMouseUp: (target: 'question' | 'markscheme') => void;
+  handleCanvasTouchStart: (e: React.TouchEvent<HTMLCanvasElement>, target: 'question' | 'markscheme') => void;
+  handleCanvasTouchMove: (e: React.TouchEvent<HTMLCanvasElement>, target: 'question' | 'markscheme') => void;
+  handleCanvasTouchEnd: (target: 'question' | 'markscheme') => void;
   handleTextSubmit: () => void;
   handleEraserClick: (e: React.MouseEvent<HTMLCanvasElement>, target: 'question' | 'markscheme') => void;
   onImageLoad: () => void;
@@ -55,6 +58,9 @@ export function QuestionViewer({
   handleCanvasMouseDown,
   handleCanvasMouseMove,
   handleCanvasMouseUp,
+  handleCanvasTouchStart,
+  handleCanvasTouchMove,
+  handleCanvasTouchEnd,
   handleTextSubmit,
   handleEraserClick,
   onImageLoad,
@@ -374,11 +380,16 @@ export function QuestionViewer({
                       onMouseMove={(e) => handleCanvasMouseMove(e, 'question')}
                       onMouseUp={() => handleCanvasMouseUp('question')}
                       onMouseLeave={() => handleCanvasMouseUp('question')}
+                      onTouchStart={(e) => handleCanvasTouchStart(e, 'question')}
+                      onTouchMove={(e) => handleCanvasTouchMove(e, 'question')}
+                      onTouchEnd={() => handleCanvasTouchEnd('question')}
+                      onTouchCancel={() => handleCanvasTouchEnd('question')}
                       style={{
                         position: 'absolute',
                         top: 0,
                         left: 0,
                         pointerEvents: annotationMode !== 'none' ? 'auto' : 'none',
+                        touchAction: annotationMode !== 'none' ? 'none' : 'auto',
                         cursor: annotationMode === 'pen' ? 'crosshair' : annotationMode === 'text' ? 'text' : annotationMode === 'eraser' ? 'pointer' : 'default'
                       }}
                     />
@@ -465,11 +476,16 @@ export function QuestionViewer({
                         onMouseMove={(e) => handleCanvasMouseMove(e, 'markscheme')}
                         onMouseUp={() => handleCanvasMouseUp('markscheme')}
                         onMouseLeave={() => handleCanvasMouseUp('markscheme')}
+                        onTouchStart={(e) => handleCanvasTouchStart(e, 'markscheme')}
+                        onTouchMove={(e) => handleCanvasTouchMove(e, 'markscheme')}
+                        onTouchEnd={() => handleCanvasTouchEnd('markscheme')}
+                        onTouchCancel={() => handleCanvasTouchEnd('markscheme')}
                         style={{
                           position: 'absolute',
                           top: 0,
                           left: 0,
                           pointerEvents: annotationMode !== 'none' ? 'auto' : 'none',
+                          touchAction: annotationMode !== 'none' ? 'none' : 'auto',
                           cursor: annotationMode === 'pen' ? 'crosshair' : annotationMode === 'text' ? 'text' : annotationMode === 'eraser' ? 'pointer' : 'default'
                         }}
                       />

@@ -52,6 +52,9 @@ function App() {
     handleCanvasMouseDown,
     handleCanvasMouseMove,
     handleCanvasMouseUp,
+    handleCanvasTouchStart,
+    handleCanvasTouchMove,
+    handleCanvasTouchEnd,
     handleTextSubmit,
     clearAnnotations,
     resizeCanvases,
@@ -259,6 +262,9 @@ function App() {
             handleCanvasMouseDown={handleCanvasMouseDown}
             handleCanvasMouseMove={handleCanvasMouseMove}
             handleCanvasMouseUp={handleCanvasMouseUp}
+            handleCanvasTouchStart={handleCanvasTouchStart}
+            handleCanvasTouchMove={handleCanvasTouchMove}
+            handleCanvasTouchEnd={handleCanvasTouchEnd}
             handleTextSubmit={handleTextSubmit}
             handleEraserClick={handleEraserClick}
             onImageLoad={resizeCanvases}
