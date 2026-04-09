@@ -1,48 +1,44 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  /* Colour palette — Medly-style soft green */
-  --color-primary: #5cb270;
-  --color-primary-hover: #4a9f5f;
-  --color-primary-light: #e8f5e9;
-  --color-danger: #ef4444;
-  --color-danger-hover: #dc2626;
+  --color-primary: #0066CC;
+  --color-primary-hover: #0055B3;
+  --color-primary-light: #E8F0FE;
+  --color-danger: #FF3B30;
+  --color-danger-hover: #E0342B;
+  --color-success: #34C759;
 
-  --color-bg: #faf8f6;
-  --color-surface: #ffffff;
-  --color-surface-alt: #f9f7f5;
-  --color-border: #eee;
-  --color-border-light: #f5f3f0;
+  --color-bg: #F5F5F7;
+  --color-surface: #FFFFFF;
+  --color-surface-alt: #FAFAFA;
+  --color-border: rgba(0, 0, 0, 0.06);
+  --color-border-light: rgba(0, 0, 0, 0.03);
 
-  --color-text: #111827;
-  --color-text-secondary: #888;
-  --color-text-muted: #bbb;
+  --color-text: #1D1D1F;
+  --color-text-secondary: #86868B;
+  --color-text-muted: #AEAEB2;
 
-  /* Typography */
-  --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-heading: 'Outfit', system-ui, -apple-system, sans-serif;
+  --font-body: 'Inter', system-ui, -apple-system, sans-serif;
 
-  /* Radii — rounder, softer feel */
-  --radius-sm: 10px;
-  --radius-md: 14px;
-  --radius-lg: 20px;
+  --radius-sm: 12px;
+  --radius-md: 16px;
+  --radius-lg: 24px;
   --radius-full: 9999px;
 
-  /* Shadows — subtler, warmer */
-  --shadow-sm: 0 1px 4px rgba(0, 0, 0, 0.04);
-  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.05);
-  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.08);
-  --shadow-focus: 0 0 0 3px rgba(92, 178, 112, 0.18);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 8px 30px rgba(0, 0, 0, 0.04);
+  --shadow-lg: 0 16px 64px rgba(0, 0, 0, 0.08);
+  --shadow-focus: 0 0 0 4px rgba(0, 102, 204, 0.12);
 
-  /* Transitions */
   --transition-fast: 150ms ease;
   --transition-normal: 250ms ease;
 }
 
-/* Global reset */
 *,
 *::before,
 *::after {
@@ -53,7 +49,7 @@
 
 html,
 body {
-  font-family: var(--font-family);
+  font-family: var(--font-body);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   color: var(--color-text);
@@ -69,17 +65,14 @@ body {
   overflow: hidden;
 }
 
-/* Scrollbar */
-html,
-body,
-* {
+html, body, * {
   scrollbar-width: thin;
   scrollbar-color: var(--color-text-muted) transparent;
 }
 
 *::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 
 *::-webkit-scrollbar-track {
@@ -91,56 +84,41 @@ body,
   border-radius: var(--radius-full);
 }
 
-/* Keyframes */
 @keyframes spin {
-  from {
-    transform: rotate(0deg);
-  }
-
-  to {
-    transform: rotate(360deg);
-  }
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 @keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-
-  to {
-    opacity: 1;
-  }
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes slideInLeft {
-  from {
-    transform: translateX(-100%);
-  }
-
-  to {
-    transform: translateX(0);
-  }
+  from { transform: translateX(-100%); }
+  to { transform: translateX(0); }
 }
 
 @keyframes pulse {
-
-  0%,
-  100% {
-    opacity: 1;
-  }
-
-  50% {
-    opacity: 0.5;
-  }
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
 }
 
-/* Utilities */
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+
 .animate-spin {
   animation: spin 1s linear infinite;
 }
 
 .animate-fade-in {
   animation: fadeIn var(--transition-normal) ease forwards;
+}
+
+.animate-scale-in {
+  animation: scaleIn var(--transition-normal) ease forwards;
 }
 
 .animate-slide-in-left {
@@ -151,21 +129,20 @@ body,
   animation: pulse 2s ease-in-out infinite;
 }
 
-/* Button reset */
 button {
-  font-family: var(--font-family);
+  font-family: var(--font-body);
 }
 
-/* Mobile touch */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-heading);
+}
+
 @media (max-width: 768px) {
   * {
     -webkit-tap-highlight-color: transparent;
   }
 
-  /* Prevent iOS Safari auto-zoom on input focus (requires >= 16px) */
-  input,
-  select,
-  textarea {
+  input, select, textarea {
     font-size: 16px !important;
   }
 

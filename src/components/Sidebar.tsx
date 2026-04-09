@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { AnnotationTools } from './AnnotationTools';
 import { WorksheetPanel } from './WorksheetPanel';
 import { FeedbackForm } from './FeedbackForm';
-import { Menu, X, SlidersHorizontal, FileText, MessageSquare, Download, Plus, Minus, Eye } from 'lucide-react';
+import { X, SlidersHorizontal, FileText, MessageSquare, Download, Plus, Minus, Eye } from 'lucide-react';
 import type { AnnotationMode, Match, ViewMode } from '../types/index';
 
 interface SidebarProps {
@@ -17,7 +17,6 @@ interface SidebarProps {
   topMatches?: Match[];
   mobileOpen: boolean;
   setMobileOpen: (open: boolean) => void;
-  // Mobile-only: PDF view & worksheet toggle
   viewMode?: ViewMode;
   setViewMode?: (mode: ViewMode) => void;
   paperPdfUrl?: string | null;
@@ -76,42 +75,53 @@ export function Sidebar({
     }
   };
 
-  const sidebarBtnStyle = (active = false): React.CSSProperties => ({
+  const btnBase: React.CSSProperties = {
     width: '100%',
     padding: '10px 14px',
-    backgroundColor: active ? 'var(--color-primary-hover)' : 'var(--color-primary)',
-    color: '#fff',
     border: 'none',
-    borderRadius: 'var(--radius-sm)',
+    borderRadius: 'var(--radius-full)',
     cursor: 'pointer',
     fontSize: '13px',
-    fontWeight: 600,
+    fontWeight: 500,
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     gap: '8px',
-    transition: 'background var(--transition-fast)',
-  });
+    transition: 'all var(--transition-fast)',
+    fontFamily: 'var(--font-body)',
+  };
+
+  const primaryBtn: React.CSSProperties = {
+    ...btnBase,
+    backgroundColor: 'var(--color-primary)',
+    color: '#fff',
+  };
+
+  const ghostBtn: React.CSSProperties = {
+    ...btnBase,
+    backgroundColor: 'var(--color-bg)',
+    color: 'var(--color-text)',
+  };
 
   const sidebarContent = (
     <div style={{ padding: '16px', overflowY: 'auto', flex: 1 }}>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-        <button onClick={onOpenFilters} style={sidebarBtnStyle()}>
-          <SlidersHorizontal size={16} />
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        <button data-testid="sidebar-filters-btn" onClick={onOpenFilters} style={ghostBtn}>
+          <SlidersHorizontal size={15} />
           Filters
         </button>
 
-        {/* Mobile-only: PDF view & worksheet toggle */}
         {isMobile && viewMode !== undefined && setViewMode && (
           <>
             <div ref={pdfMenuRef} style={{ position: 'relative' }}>
               <button
+                data-testid="sidebar-pdf-menu-btn"
                 onClick={() => setPdfMenuOpen((prev) => !prev)}
-                style={sidebarBtnStyle(viewMode !== 'question')}
+                style={viewMode !== 'question' ? primaryBtn : ghostBtn}
               >
-                <Eye size={16} />
+                <Eye size={15} />
                 {viewMode === 'question' ? 'View paper/markscheme' : viewMode === 'paper' ? 'Paper PDF' : 'Markscheme PDF'}
-                <span style={{ fontSize: '9px' }}>▼</span>
+                <span style={{ fontSize: '9px' }}>&#9662;</span>
               </button>
               {pdfMenuOpen && (
                 <div
@@ -122,7 +132,6 @@ export function Sidebar({
                     left: 0,
                     right: 0,
                     backgroundColor: 'var(--color-surface)',
-                    border: '1px solid var(--color-border)',
                     borderRadius: 'var(--radius-md)',
                     boxShadow: 'var(--shadow-lg)',
                     display: 'flex',
@@ -138,11 +147,12 @@ export function Sidebar({
                   ].map(({ label, mode, url }, i) => (
                     <button
                       key={mode}
+                      data-testid={`sidebar-pdf-option-${mode}`}
                       type="button"
                       onClick={() => { if (url) { setViewMode(mode); setPdfMenuOpen(false); } }}
                       disabled={!url}
                       style={{
-                        padding: '10px 14px',
+                        padding: '11px 16px',
                         background: viewMode === mode ? 'var(--color-primary-light)' : 'transparent',
                         border: 'none',
                         borderBottom: i < 2 ? '1px solid var(--color-border-light)' : 'none',
@@ -151,7 +161,7 @@ export function Sidebar({
                         cursor: url ? 'pointer' : 'not-allowed',
                         color: url ? 'var(--color-text)' : 'var(--color-text-muted)',
                         fontWeight: viewMode === mode ? 600 : 400,
-                        fontFamily: 'var(--font-family)',
+                        fontFamily: 'var(--font-body)',
                       }}
                     >
                       {label}
@@ -163,10 +173,11 @@ export function Sidebar({
 
             {onToggleSelection && (
               <button
+                data-testid="sidebar-toggle-selection-btn"
                 onClick={onToggleSelection}
-                style={sidebarBtnStyle()}
+                style={isCurrentSelected ? { ...ghostBtn, color: 'var(--color-danger)' } : primaryBtn}
               >
-                {isCurrentSelected ? <Minus size={16} /> : <Plus size={16} />}
+                {isCurrentSelected ? <Minus size={15} /> : <Plus size={15} />}
                 {isCurrentSelected ? 'Remove from worksheet' : 'Add to worksheet'}
               </button>
             )}
@@ -181,33 +192,36 @@ export function Sidebar({
         />
 
         <button
+          data-testid="sidebar-worksheet-btn"
           onClick={() => setShowWorksheet(!showWorksheet)}
-          style={sidebarBtnStyle()}
+          style={ghostBtn}
         >
-          <FileText size={16} />
+          <FileText size={15} />
           {showWorksheet ? 'Hide Worksheet' : 'Make Worksheet'}
         </button>
 
         {topMatches && topMatches.length > 0 && (
           <button
+            data-testid="sidebar-download-all-btn"
             onClick={handleDownloadAll}
             disabled={isSavingAll}
             style={{
-              ...sidebarBtnStyle(),
-              opacity: isSavingAll ? 0.6 : 1,
-              cursor: isSavingAll ? 'not-allowed' : 'pointer'
+              ...ghostBtn,
+              opacity: isSavingAll ? 0.5 : 1,
+              cursor: isSavingAll ? 'not-allowed' : 'pointer',
             }}
           >
-            <Download size={16} />
-            {isSavingAll ? 'Saving…' : 'Download All'}
+            <Download size={15} />
+            {isSavingAll ? 'Saving...' : 'Download All'}
           </button>
         )}
 
         <button
+          data-testid="sidebar-feedback-btn"
           onClick={() => setShowFeedbackForm(!showFeedbackForm)}
-          style={sidebarBtnStyle(showFeedbackForm)}
+          style={showFeedbackForm ? primaryBtn : ghostBtn}
         >
-          <MessageSquare size={16} />
+          <MessageSquare size={15} />
           {showFeedbackForm ? 'Hide Feedback' : 'Request Features'}
         </button>
 
@@ -220,8 +234,6 @@ export function Sidebar({
             onHide={() => setShowWorksheet(false)}
           />
         )}
-
-
       </div>
     </div>
   );
@@ -237,25 +249,25 @@ export function Sidebar({
             style={{
               position: 'fixed',
               inset: 0,
-              background: 'rgba(0,0,0,0.4)',
+              background: 'rgba(0,0,0,0.25)',
               zIndex: 40,
-              backdropFilter: 'blur(2px)',
-              WebkitBackdropFilter: 'blur(2px)',
+              backdropFilter: 'blur(4px)',
+              WebkitBackdropFilter: 'blur(4px)',
             }}
           />
         )}
         <div
-          className={mobileOpen ? 'animate-fade-in' : ''}
+          className={mobileOpen ? 'animate-scale-in' : ''}
+          data-testid="mobile-sidebar-drawer"
           style={{
             position: 'fixed',
             top: '50%',
             left: '50%',
             transform: 'translate(-50%, -50%)',
             width: '90vw',
-            maxWidth: '350px',
+            maxWidth: '360px',
             maxHeight: '85vh',
             backgroundColor: 'var(--color-surface)',
-            border: '1px solid var(--color-border)',
             borderRadius: 'var(--radius-lg)',
             zIndex: 50,
             display: mobileOpen ? 'flex' : 'none',
@@ -264,28 +276,29 @@ export function Sidebar({
             overflow: 'hidden',
           }}
         >
-          {/* Drawer header */}
           <div style={{
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            padding: '14px 16px',
+            padding: '16px 18px',
             borderBottom: '1px solid var(--color-border)',
           }}>
-            <span style={{ fontWeight: 700, color: 'var(--color-text-secondary)', fontSize: '18px' }}>SQ</span>
+            <span style={{ fontWeight: 600, color: 'var(--color-text)', fontSize: '16px', fontFamily: 'var(--font-heading)' }}>Menu</span>
             <button
+              data-testid="mobile-sidebar-close-btn"
               onClick={() => setMobileOpen(false)}
               style={{
-                background: 'none',
+                background: 'var(--color-bg)',
                 border: 'none',
                 cursor: 'pointer',
                 color: 'var(--color-text-secondary)',
-                padding: '4px',
+                padding: '6px',
                 display: 'flex',
                 alignItems: 'center',
+                borderRadius: '50%',
               }}
             >
-              <X size={22} />
+              <X size={18} />
             </button>
           </div>
           {sidebarContent}
@@ -298,44 +311,55 @@ export function Sidebar({
   const openSidebarWidth = 280;
 
   return (
-    <div style={{
-      width: sidebarOpen ? `${openSidebarWidth}px` : '50px',
-      minHeight: '100dvh',
-      backgroundColor: 'var(--color-surface)',
-      borderRight: '1px solid var(--color-border)',
-      display: 'flex',
-      flexDirection: 'column',
-      transition: 'width var(--transition-normal)',
-      position: 'relative'
-    }}>
+    <div
+      data-testid="desktop-sidebar"
+      style={{
+        width: sidebarOpen ? `${openSidebarWidth}px` : '56px',
+        minHeight: '100dvh',
+        backgroundColor: 'var(--color-surface)',
+        display: 'flex',
+        flexDirection: 'column',
+        transition: 'width var(--transition-normal)',
+        position: 'relative',
+        margin: '8px 0 8px 8px',
+        borderRadius: 'var(--radius-lg)',
+        boxShadow: 'var(--shadow-md)',
+        overflow: 'hidden',
+      }}
+    >
       {/* Header */}
       <div style={{
         display: 'flex',
         alignItems: 'center',
-        justifyContent: 'space-between',
-        padding: '12px 14px',
+        justifyContent: sidebarOpen ? 'space-between' : 'center',
+        padding: '14px 16px',
       }}>
         {sidebarOpen && (
-          <span style={{ fontWeight: 700, color: 'var(--color-text-secondary)', fontSize: '18px' }}>SQ</span>
+          <span style={{ fontWeight: 600, color: 'var(--color-text)', fontSize: '16px', fontFamily: 'var(--font-heading)', letterSpacing: '-0.02em' }}>SQ</span>
         )}
         <button
+          data-testid="sidebar-toggle-btn"
           onClick={() => setSidebarOpen(!sidebarOpen)}
           style={{
-            width: '34px',
-            height: '34px',
-            backgroundColor: 'transparent',
+            width: '32px',
+            height: '32px',
+            backgroundColor: 'var(--color-bg)',
             color: 'var(--color-text-secondary)',
-            border: '1px solid var(--color-border)',
-            borderRadius: 'var(--radius-sm)',
+            border: 'none',
+            borderRadius: 'var(--radius-full)',
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            transition: 'background var(--transition-fast)',
+            transition: 'all var(--transition-fast)',
           }}
           title={sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
         >
-          <Menu size={18} />
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <line x1="3" y1="18" x2="21" y2="18"></line>
+          </svg>
         </button>
       </div>
 

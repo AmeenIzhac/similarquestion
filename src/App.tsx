@@ -7,12 +7,10 @@ import type { LevelFilter, CalculatorFilter, ViewMode } from './types/index';
 import { getDocumentBaseFromLabel } from './utils/formatters';
 
 function App() {
-  // Filter state
   const [levelFilter, setLevelFilter] = useState<LevelFilter>('all');
   const [calculatorFilter, setCalculatorFilter] = useState<CalculatorFilter>('all');
   const [numMatches, setNumMatches] = useState<number>(25);
 
-  // UI state
   const [searchText, setSearchText] = useState<string>('');
   const [showCenterFilter, setShowCenterFilter] = useState<boolean>(false);
   const [viewMode, setViewMode] = useState<ViewMode>('question');
@@ -25,7 +23,6 @@ function App() {
   const [isChatOpen, setIsChatOpen] = useState<boolean>(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
 
-  // Search hook
   const {
     isProcessing,
     topMatches,
@@ -38,7 +35,6 @@ function App() {
     searchByText
   } = useSearch({ levelFilter, calculatorFilter, numMatches });
 
-  // Annotation hook
   const {
     annotationMode,
     setAnnotationMode,
@@ -67,7 +63,6 @@ function App() {
     showMarkscheme
   });
 
-  // Handle window resize
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const handleResize = () => {
@@ -80,20 +75,17 @@ function App() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Reset view mode when match changes
   useEffect(() => {
     setViewMode('question');
     setShowMarkscheme(false);
   }, [currentMatch?.labelId]);
 
-  // Reset markscheme when not in question view
   useEffect(() => {
     if (viewMode !== 'question') {
       setShowMarkscheme(false);
     }
   }, [viewMode]);
 
-  // Selection helpers
   const isCurrentSelected = useMemo(() => {
     if (!currentMatch || currentMatch.labelId === 'error') return false;
     return selectedQuestions.includes(currentMatch.labelId);
@@ -113,7 +105,6 @@ function App() {
     setSelectedQuestions((prev) => prev.filter((item) => item !== labelId));
   }, []);
 
-  // Search handlers
   const handleTextSearch = (e?: React.FormEvent, directText?: string) => {
     e?.preventDefault();
     const query = directText || searchText.trim();
@@ -137,7 +128,7 @@ function App() {
   const isLanding = !hasStarted && !isProcessing && (!currentMatch || currentMatch.labelId === 'error');
 
   return (
-    <div style={{ display: 'flex', height: '100dvh', overflow: 'hidden', backgroundColor: 'var(--color-bg)' }}>
+    <div data-testid="app-root" style={{ display: 'flex', height: '100dvh', overflow: 'hidden', backgroundColor: 'var(--color-bg)', padding: isMobile ? '0' : '0' }}>
       <Sidebar
         isMobile={isMobile}
         annotationMode={annotationMode}
@@ -166,11 +157,15 @@ function App() {
         display: 'flex',
         flexDirection: 'column',
         overflow: 'hidden',
-        backgroundColor: 'var(--color-surface)'
+        margin: isMobile ? '0' : '8px 8px 8px 0',
+        borderRadius: isMobile ? '0' : 'var(--radius-lg)',
+        backgroundColor: 'var(--color-surface)',
+        boxShadow: isMobile ? 'none' : 'var(--shadow-md)',
       }}>
         {/* Mobile hamburger */}
         {isMobile && (
           <button
+            data-testid="mobile-menu-btn"
             onClick={() => setMobileMenuOpen(true)}
             style={{
               position: 'absolute',
@@ -179,9 +174,11 @@ function App() {
               zIndex: 30,
               width: '38px',
               height: '38px',
-              backgroundColor: 'var(--color-surface)',
+              backgroundColor: 'rgba(255,255,255,0.8)',
+              backdropFilter: 'blur(12px)',
+              WebkitBackdropFilter: 'blur(12px)',
               border: '1px solid var(--color-border)',
-              borderRadius: 'var(--radius-sm)',
+              borderRadius: 'var(--radius-full)',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
@@ -191,43 +188,61 @@ function App() {
             }}
             title="Open menu"
           >
-            <Menu size={20} />
+            <Menu size={18} />
           </button>
         )}
 
         {/* Landing page */}
         {isLanding && (
-          <div style={{
-            flex: 1,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            position: 'relative',
-          }}>
+          <div
+            data-testid="landing-page"
+            style={{
+              flex: 1,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              position: 'relative',
+              backgroundImage: 'url(https://static.prod-images.emergentagent.com/jobs/a4ffc6e3-906d-4567-9188-ce517a662ad7/images/a5390a53ddc570b746500516f862346ae0f15f05b395aece0b8fae2c2cf4cb3c.png)',
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+            }}
+          >
+            {/* Overlay */}
+            <div style={{
+              position: 'absolute',
+              inset: 0,
+              backgroundColor: 'rgba(255, 255, 255, 0.55)',
+              backdropFilter: 'blur(2px)',
+              WebkitBackdropFilter: 'blur(2px)',
+            }} />
+
             <div style={{
               width: '100%',
-              maxWidth: '680px',
+              maxWidth: '720px',
               margin: '0 auto',
               padding: isMobile ? '24px 20px' : '24px 32px',
+              position: 'relative',
+              zIndex: 1,
             }}>
-              <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+              <div style={{ textAlign: 'center', marginBottom: '32px' }}>
                 <h1 style={{
-                  margin: '0 0 8px 0',
-                  fontSize: isMobile ? '22px' : '32px',
-                  fontWeight: 700,
+                  margin: '0 0 10px 0',
+                  fontSize: isMobile ? '26px' : '40px',
+                  fontWeight: 600,
                   color: 'var(--color-text)',
-                  lineHeight: 1.2,
-                  letterSpacing: '-0.02em',
+                  lineHeight: 1.15,
+                  letterSpacing: '-0.03em',
+                  fontFamily: 'var(--font-heading)',
                 }}>
-                  Describe a maths question or topic
+                  Find similar questions
                 </h1>
                 <p style={{
                   margin: 0,
-                  fontSize: isMobile ? '14px' : '15px',
+                  fontSize: isMobile ? '14px' : '16px',
                   color: 'var(--color-text-secondary)',
                   lineHeight: 1.5,
                 }}>
-                  Upload an image or type a description to find similar GCSE questions
+                  Upload an image or describe a topic to search GCSE questions
                 </p>
               </div>
               <SearchBar
@@ -240,12 +255,14 @@ function App() {
             </div>
             <div style={{
               position: 'absolute',
-              bottom: '16px',
+              bottom: '20px',
               left: 0,
               right: 0,
               textAlign: 'center',
               color: 'var(--color-text-muted)',
               fontSize: '11px',
+              zIndex: 1,
+              fontWeight: 500,
             }}>
               Similar Question 2026
             </div>
@@ -292,19 +309,21 @@ function App() {
           />
         )}
 
-
         {/* Error state */}
         {currentMatch && !isProcessing && currentMatch.labelId === 'error' && (
-          <div style={{
-            flex: 1,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '40px',
-            textAlign: 'center',
-            color: 'var(--color-text-secondary)',
-            fontSize: '15px'
-          }}>
+          <div
+            data-testid="error-state"
+            style={{
+              flex: 1,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '40px',
+              textAlign: 'center',
+              color: 'var(--color-text-secondary)',
+              fontSize: '15px',
+            }}
+          >
             {currentMatch.text}
           </div>
         )}
@@ -319,9 +338,9 @@ function App() {
             bottom: 0,
             left: 0,
             right: 0,
-            padding: isMobile ? '10px 0' : '16px 0',
-            paddingBottom: isMobile ? 'calc(10px + env(safe-area-inset-bottom, 0px))' : '16px',
-            background: 'linear-gradient(to top, var(--color-surface) 70%, transparent)',
+            padding: isMobile ? '12px 0' : '16px 0',
+            paddingBottom: isMobile ? 'calc(12px + env(safe-area-inset-bottom, 0px))' : '20px',
+            background: 'linear-gradient(to top, var(--color-surface) 60%, transparent)',
           }}>
             <div style={{
               width: '100%',
@@ -334,19 +353,20 @@ function App() {
             }}>
               {viewMode === 'question' && currentMatch && currentMatch.labelId !== 'error' && (
                 <button
+                  data-testid="toggle-markscheme-btn"
                   type="button"
                   onClick={() => setShowMarkscheme((prev) => !prev)}
                   style={{
-                    padding: '10px 16px',
+                    padding: '10px 18px',
                     backgroundColor: 'var(--color-primary)',
                     color: '#fff',
                     border: 'none',
                     borderRadius: 'var(--radius-full)',
                     fontSize: '13px',
-                    fontWeight: 600,
+                    fontWeight: 500,
                     cursor: 'pointer',
                     whiteSpace: 'nowrap',
-                    transition: 'background var(--transition-fast)',
+                    transition: 'all var(--transition-fast)',
                     flexShrink: 0,
                   }}
                 >

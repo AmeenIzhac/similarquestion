@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { Paperclip, Loader2, X } from 'lucide-react';
+import { Paperclip, Loader2, X, Search } from 'lucide-react';
 import Tesseract from 'tesseract.js';
 
 interface SearchBarProps {
@@ -19,7 +19,7 @@ export function SearchBar({
   isMobile,
   placeholder: customPlaceholder
 }: SearchBarProps) {
-  const placeholder = customPlaceholder || (isMobile ? "Describe a question..." : "Describe the question of your dreams");
+  const placeholder = customPlaceholder || (isMobile ? "Describe a question..." : "Describe the question you're looking for...");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isOCRProcessing, setIsOCRProcessing] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -83,42 +83,42 @@ export function SearchBar({
   return (
     <form
       onSubmit={handleSubmit}
+      data-testid="search-form"
       style={{
         flex: 1,
         backgroundColor: 'var(--color-surface)',
-        border: '1px solid var(--color-border)',
         borderRadius: imagePreview ? 'var(--radius-lg)' : 'var(--radius-full)',
-        padding: isMobile ? '4px 10px' : '6px 14px',
-        boxShadow: 'var(--shadow-md)',
+        padding: isMobile ? '4px 8px' : '6px 10px',
+        boxShadow: 'var(--shadow-lg)',
         display: 'flex',
         flexDirection: 'column',
         minWidth: 0,
-        transition: 'box-shadow var(--transition-fast), border-radius var(--transition-fast)',
+        transition: 'all var(--transition-fast)',
+        border: '1px solid var(--color-border)',
       }}
     >
-      {/* Image preview */}
       {imagePreview && (
-        <div style={{ padding: '8px 4px 4px 4px' }}>
+        <div style={{ padding: '8px 6px 4px 6px' }}>
           <div style={{ position: 'relative', display: 'inline-block' }}>
             <img
               src={imagePreview}
               alt="Preview"
               style={{
-                width: isMobile ? '50px' : '72px',
-                height: isMobile ? '50px' : '72px',
+                width: isMobile ? '48px' : '64px',
+                height: isMobile ? '48px' : '64px',
                 objectFit: 'cover',
                 borderRadius: 'var(--radius-sm)',
-                border: '1px solid var(--color-border)',
               }}
             />
             <button
+              data-testid="search-clear-image-btn"
               type="button"
               onClick={clearImage}
               style={{
                 position: 'absolute',
                 top: '-6px',
                 right: '-6px',
-                background: 'var(--color-text-secondary)',
+                background: 'var(--color-text)',
                 color: 'white',
                 border: 'none',
                 borderRadius: '50%',
@@ -129,65 +129,32 @@ export function SearchBar({
                 justifyContent: 'center',
                 cursor: 'pointer',
                 padding: 0,
-                transition: 'background var(--transition-fast)',
               }}
               title="Remove image"
             >
-              <X size={12} />
+              <X size={11} />
             </button>
             {isOCRProcessing && (
               <div style={{
                 position: 'absolute',
                 inset: 0,
-                background: 'rgba(255,255,255,0.75)',
+                background: 'rgba(255,255,255,0.8)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 borderRadius: 'var(--radius-sm)',
               }}>
-                <Loader2 size={18} className="animate-spin" color="var(--color-primary)" />
+                <Loader2 size={16} className="animate-spin" color="var(--color-primary)" />
               </div>
             )}
           </div>
         </div>
       )}
 
-      {/* Input row */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0 }}>
-        <button
-          type="button"
-          onClick={() => fileInputRef.current?.click()}
-          disabled={isProcessing || isOCRProcessing}
-          style={{
-            background: 'none',
-            border: 'none',
-            cursor: (isProcessing || isOCRProcessing) ? 'not-allowed' : 'pointer',
-            padding: '6px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: 'var(--color-text-muted)',
-            borderRadius: '50%',
-            opacity: (isProcessing || isOCRProcessing) ? 0.4 : 1,
-            transition: 'color var(--transition-fast), opacity var(--transition-fast)',
-            flexShrink: 0,
-          }}
-          title="Upload image for OCR"
-        >
-          {isOCRProcessing ? (
-            <Loader2 size={20} className="animate-spin" />
-          ) : (
-            <Paperclip size={20} />
-          )}
-        </button>
-        <input
-          type="file"
-          ref={fileInputRef}
-          onChange={handleFileUpload}
-          accept="image/*"
-          style={{ display: 'none' }}
-        />
+      <div style={{ display: 'flex', alignItems: 'center', gap: '4px', minWidth: 0 }}>
+        <Search size={18} style={{ flexShrink: 0, color: 'var(--color-text-muted)', marginLeft: '6px' }} />
         <textarea
+          data-testid="search-input"
           value={searchText}
           onChange={(e) => setSearchText(e.target.value)}
           onInput={(e) => {
@@ -202,25 +169,59 @@ export function SearchBar({
             }
           }}
           onPaste={handlePaste}
-          placeholder={isOCRProcessing ? "Reading image…" : placeholder}
+          placeholder={isOCRProcessing ? "Reading image..." : placeholder}
           rows={1}
           style={{
             flex: 1,
             minWidth: 0,
             height: 'auto',
             minHeight: '42px',
-            padding: '10px 8px',
+            padding: '10px 6px',
             border: 'none',
             outline: 'none',
-            fontSize: '16px',
+            fontSize: '15px',
             resize: 'none',
             boxSizing: 'border-box',
             background: 'transparent',
             overflow: 'hidden',
-            fontFamily: 'var(--font-family)',
+            fontFamily: 'var(--font-body)',
             color: 'var(--color-text)',
             lineHeight: 1.5,
           }}
+        />
+        <button
+          data-testid="search-upload-btn"
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={isProcessing || isOCRProcessing}
+          style={{
+            background: 'none',
+            border: 'none',
+            cursor: (isProcessing || isOCRProcessing) ? 'not-allowed' : 'pointer',
+            padding: '6px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: 'var(--color-text-muted)',
+            borderRadius: '50%',
+            opacity: (isProcessing || isOCRProcessing) ? 0.4 : 1,
+            transition: 'all var(--transition-fast)',
+            flexShrink: 0,
+          }}
+          title="Upload image for OCR"
+        >
+          {isOCRProcessing ? (
+            <Loader2 size={18} className="animate-spin" />
+          ) : (
+            <Paperclip size={18} />
+          )}
+        </button>
+        <input
+          type="file"
+          ref={fileInputRef}
+          onChange={handleFileUpload}
+          accept="image/*"
+          style={{ display: 'none' }}
         />
       </div>
     </form>
