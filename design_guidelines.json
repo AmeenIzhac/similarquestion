@@ -1,0 +1,79 @@
+{
+  "theme": "light",
+  "archetype": "Archetype 4 (Swiss & High-Contrast) + Archetype 3 (Pastel & Soft) Hybrid",
+  "vibe": "Apple-like, minimal, clean, sophisticated, highly focused.",
+  "global_rules": {
+    "spacing": "Generous. Use p-6, p-8, p-12 for containers. Let elements breathe.",
+    "borders": "Extremely subtle. Use border-black/5 or border-black/[0.04]. Never use dark thick borders in this theme.",
+    "shadows": "Ambient and soft. Use shadow-[0_8px_30px_rgb(0,0,0,0.04)] for panels, and shadow-[0_16px_64px_rgb(0,0,0,0.08)] for floating elements (like the bottom search bar).",
+    "corners": "Highly rounded. Use rounded-2xl or rounded-3xl for main panels/cards. Use rounded-full for buttons and pills.",
+    "glassmorphism": "Use backdrop-blur-xl bg-white/70 for sticky headers, floating toolbars, and the bottom search bar.",
+    "data_testid": "MANDATORY. Every interactive element (buttons, inputs, toggles, list items) MUST have a data-testid attribute."
+  },
+  "colors": {
+    "background": "#F5F5F7",
+    "surface": "#FFFFFF",
+    "surface_secondary": "#FAFAFA",
+    "text_primary": "#1D1D1F",
+    "text_secondary": "#86868B",
+    "accent": "#0066CC",
+    "accent_hover": "#0055B3",
+    "danger": "#FF3B30",
+    "success": "#34C759",
+    "border": "rgba(0, 0, 0, 0.05)"
+  },
+  "typography": {
+    "font_family_heading": "Outfit, SF Pro Display, system-ui, sans-serif",
+    "font_family_body": "Inter, SF Pro Text, system-ui, sans-serif",
+    "h1": "text-4xl sm:text-5xl font-semibold tracking-tight text-[#1D1D1F]",
+    "h2": "text-2xl sm:text-3xl font-medium tracking-tight text-[#1D1D1F]",
+    "h3": "text-xl font-medium tracking-tight text-[#1D1D1F]",
+    "body": "text-base text-[#1D1D1F] leading-relaxed",
+    "small": "text-sm text-[#86868B]"
+  },
+  "components": {
+    "button_primary": "bg-[#0066CC] text-white hover:bg-[#0055B3] rounded-full px-6 py-2.5 font-medium transition-all shadow-sm",
+    "button_secondary": "bg-[#F5F5F7] text-[#1D1D1F] hover:bg-[#E8E8ED] rounded-full px-6 py-2.5 font-medium transition-all",
+    "button_ghost": "text-[#86868B] hover:text-[#1D1D1F] hover:bg-black/5 rounded-full px-4 py-2 transition-all",
+    "button_icon": "p-2 rounded-full text-[#86868B] hover:text-[#1D1D1F] hover:bg-black/5 transition-all",
+    "panel": "bg-white rounded-3xl border border-black/5 shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden",
+    "glass_bar": "bg-white/70 backdrop-blur-2xl border border-white/20 shadow-[0_16px_64px_rgb(0,0,0,0.08)]",
+    "input_field": "bg-[#F5F5F7] border-transparent focus:bg-white focus:border-[#0066CC] focus:ring-4 focus:ring-[#0066CC]/10 rounded-2xl px-4 py-3 text-[#1D1D1F] placeholder:text-[#86868B] transition-all outline-none"
+  },
+  "layouts": {
+    "landing_page": {
+      "background_image": "https://static.prod-images.emergentagent.com/jobs/a4ffc6e3-906d-4567-9188-ce517a662ad7/images/a5390a53ddc570b746500516f862346ae0f15f05b395aece0b8fae2c2cf4cb3c.png",
+      "structure": "Full viewport height. Background image set to cover with a white overlay (bg-white/40 backdrop-blur-[2px]) to ensure contrast. Centered content.",
+      "search_bar": "Spotlight-style. Massive (max-w-3xl w-full), rounded-full, heavy shadow (shadow-2xl), white background. Left icon: Search. Right icon: Paperclip (OCR). Large text (text-xl)."
+    },
+    "main_app": {
+      "structure": "Grid layout or flex layout spanning 100vh with overflow-hidden. Background #F5F5F7. The layout should feel like an iPad app.",
+      "left_sidebar": "Floating panel style. Width ~320px. m-4 rounded-3xl bg-white shadow-sm flex flex-col gap-6 p-6. Hide on mobile (use hamburger menu/drawer).",
+      "center_canvas": "Flex-1 flex flex-col m-4 ml-0 rounded-3xl bg-white shadow-sm overflow-hidden relative.",
+      "right_panel_chatbot": "Width ~380px. m-4 ml-0 rounded-3xl bg-white shadow-sm flex flex-col. Use inline mode for mobile.",
+      "bottom_search_bar": "Floating glass pill centered at the bottom of the screen (bottom-8). Absolute positioning over the canvas."
+    },
+    "question_viewer": {
+      "toolbar": "Absolute top-4 left-1/2 -translate-x-1/2 flex items-center gap-2 p-2 rounded-full bg-white/80 backdrop-blur-xl border border-black/5 shadow-sm z-10",
+      "image_container": "w-full h-full bg-[#FAFAFA] flex items-center justify-center overflow-auto cursor-grab active:cursor-grabbing",
+      "mark_scheme": "Split pane below the question. Use a subtle top border (border-t border-black/5) and a slightly darker background like #F5F5F7 to visually separate it from the question."
+    }
+  },
+  "media": {
+    "landing_ambient_bg": {
+      "url": "https://static.prod-images.emergentagent.com/jobs/a4ffc6e3-906d-4567-9188-ce517a662ad7/images/a5390a53ddc570b746500516f862346ae0f15f05b395aece0b8fae2c2cf4cb3c.png",
+      "description": "Abstract 3D frosted glass spheres, minimal Apple-like aesthetic. Use as the background for the initial landing/search page, with a white/40 overlay."
+    }
+  },
+  "instructions_to_main_agent": [
+    "Completely overhaul the current CSS/Tailwind classes.",
+    "Remove any rigid, blocky layouts. Replace them with the floating 'panel' style defined above (m-4 rounded-3xl).",
+    "Ensure the application background is #F5F5F7.",
+    "For the Landing Page, create a Spotlight-like massive search bar in the center of the screen.",
+    "Replace standard headers/navs with floating glassmorphic pills (bg-white/70 backdrop-blur-xl rounded-full) where appropriate, especially for toolbars.",
+    "Replace standard sharp-cornered Shadcn inputs with heavily rounded ones (rounded-2xl) and transparent borders that turn solid on focus.",
+    "Ensure all icons use minimal stroke widths (1.5) and lucide-react.",
+    "Maintain all functional requirements (OCR paperclip, filters, annotation tools, worksheet thumbnails, etc.) but map them to this new Apple-like visual language.",
+    "Add 'data-testid' to ALL interactive elements."
+  ]
+}
