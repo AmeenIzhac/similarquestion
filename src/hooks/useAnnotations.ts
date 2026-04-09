@@ -10,8 +10,8 @@ interface UseAnnotationsProps {
 export function useAnnotations({ currentLabelId, viewMode, showMarkscheme }: UseAnnotationsProps) {
   const [annotationMode, setAnnotationMode] = useState<AnnotationMode>('none');
   const [questionDrawings, setQuestionDrawings] = useState<Map<string, DrawingData>>(new Map());
-  const [isDrawing, setIsDrawing] = useState(false);
-  const [currentPath, setCurrentPath] = useState<Array<{ x: number; y: number }>>([]);
+  const isDrawingRef = useRef(false);
+  const currentPathRef = useRef<Array<{ x: number; y: number }>>([]);
   const [textInputPos, setTextInputPos] = useState<TextInputPosition | null>(null);
   const [textInputValue, setTextInputValue] = useState('');
   
@@ -129,8 +129,8 @@ export function useAnnotations({ currentLabelId, viewMode, showMarkscheme }: Use
     const coords = getCanvasCoords(e, canvas);
     
     if (annotationMode === 'pen') {
-      setIsDrawing(true);
-      setCurrentPath([coords]);
+      isDrawingRef.current = true;
+      currentPathRef.current = [coords];
     } else if (annotationMode === 'text') {
       const rect = canvas.getBoundingClientRect();
       const displayX = e.clientX - rect.left;
@@ -150,8 +150,8 @@ export function useAnnotations({ currentLabelId, viewMode, showMarkscheme }: Use
     const coords = getTouchCanvasCoords(touch, canvas);
 
     if (annotationMode === 'pen') {
-      setIsDrawing(true);
-      setCurrentPath([coords]);
+      isDrawingRef.current = true;
+      currentPathRef.current = [coords];
     } else if (annotationMode === 'text') {
       const rect = canvas.getBoundingClientRect();
       const displayX = touch.clientX - rect.left;
@@ -188,69 +188,75 @@ export function useAnnotations({ currentLabelId, viewMode, showMarkscheme }: Use
   }, [currentLabelId, annotationMode, redrawCanvas]);
 
   const handleCanvasMouseMove = useCallback((e: React.MouseEvent<HTMLCanvasElement>, target: 'question' | 'markscheme') => {
-    if (!isDrawing || annotationMode !== 'pen' || !currentLabelId) return;
+    if (!isDrawingRef.current || annotationMode !== 'pen' || !currentLabelId) return;
     const canvas = target === 'question' ? questionCanvasRef.current : markschemeCanvasRef.current;
     if (!canvas) return;
-    
+
     const coords = getCanvasCoords(e, canvas);
-    setCurrentPath(prev => [...prev, coords]);
-    
+    const path = currentPathRef.current;
+
     const ctx = canvas.getContext('2d');
-    if (ctx && currentPath.length > 0) {
+    if (ctx && path.length > 0) {
       ctx.beginPath();
       ctx.strokeStyle = '#ef4444';
       ctx.lineWidth = 3;
       ctx.lineCap = 'round';
-      const lastPoint = currentPath[currentPath.length - 1];
+      const lastPoint = path[path.length - 1];
       ctx.moveTo(lastPoint.x, lastPoint.y);
       ctx.lineTo(coords.x, coords.y);
       ctx.stroke();
     }
-  }, [isDrawing, annotationMode, currentLabelId, currentPath]);
+
+    path.push(coords);
+  }, [annotationMode, currentLabelId]);
 
   const handleCanvasTouchMove = useCallback((e: React.TouchEvent<HTMLCanvasElement>, target: 'question' | 'markscheme') => {
-    if (!isDrawing || annotationMode !== 'pen' || !currentLabelId) return;
+    if (!isDrawingRef.current || annotationMode !== 'pen' || !currentLabelId) return;
     const canvas = target === 'question' ? questionCanvasRef.current : markschemeCanvasRef.current;
     if (!canvas || e.touches.length === 0) return;
 
     e.preventDefault();
     const coords = getTouchCanvasCoords(e.touches[0], canvas);
-    setCurrentPath(prev => [...prev, coords]);
+    const path = currentPathRef.current;
 
     const ctx = canvas.getContext('2d');
-    if (ctx && currentPath.length > 0) {
+    if (ctx && path.length > 0) {
       ctx.beginPath();
       ctx.strokeStyle = '#ef4444';
       ctx.lineWidth = 3;
       ctx.lineCap = 'round';
-      const lastPoint = currentPath[currentPath.length - 1];
+      const lastPoint = path[path.length - 1];
       ctx.moveTo(lastPoint.x, lastPoint.y);
       ctx.lineTo(coords.x, coords.y);
       ctx.stroke();
     }
-  }, [isDrawing, annotationMode, currentLabelId, currentPath]);
+
+    path.push(coords);
+  }, [annotationMode, currentLabelId]);
 
   const handleCanvasMouseUp = useCallback((target: 'question' | 'markscheme') => {
-    if (!isDrawing || !currentLabelId || currentPath.length < 2) {
-      setIsDrawing(false);
-      setCurrentPath([]);
+    const path = currentPathRef.current;
+    if (!isDrawingRef.current || !currentLabelId || path.length < 2) {
+      isDrawingRef.current = false;
+      currentPathRef.current = [];
       return;
     }
-    
+
+    const finishedPath = [...path];
     const key = `${currentLabelId}-${target}`;
     setQuestionDrawings(prev => {
       const newMap = new Map(prev);
       const existing = newMap.get(key) || { paths: [], texts: [] };
       newMap.set(key, {
         ...existing,
-        paths: [...existing.paths, { points: currentPath, color: '#ef4444' }]
+        paths: [...existing.paths, { points: finishedPath, color: '#ef4444' }]
       });
       return newMap;
     });
-    
-    setIsDrawing(false);
-    setCurrentPath([]);
-  }, [isDrawing, currentLabelId, currentPath]);
+
+    isDrawingRef.current = false;
+    currentPathRef.current = [];
+  }, [currentLabelId]);
 
   const handleCanvasTouchEnd = useCallback((target: 'question' | 'markscheme') => {
     handleCanvasMouseUp(target);
