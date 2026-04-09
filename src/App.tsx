@@ -234,7 +234,7 @@ function App() {
                   letterSpacing: '-0.03em',
                   fontFamily: 'var(--font-heading)',
                 }}>
-                  Find similar questions
+                  Describe a maths question or topic
                 </h1>
                 <p style={{
                   margin: 0,
@@ -242,7 +242,7 @@ function App() {
                   color: 'var(--color-text-secondary)',
                   lineHeight: 1.5,
                 }}>
-                  Upload an image or describe a topic to search GCSE questions
+                  Upload an image or type a description to find similar GCSE questions
                 </p>
               </div>
               <SearchBar

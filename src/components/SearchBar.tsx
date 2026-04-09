@@ -19,7 +19,7 @@ export function SearchBar({
   isMobile,
   placeholder: customPlaceholder
 }: SearchBarProps) {
-  const placeholder = customPlaceholder || (isMobile ? "Describe a question..." : "Describe the question you're looking for...");
+  const placeholder = customPlaceholder || (isMobile ? "Describe a question..." : "Describe the question of your dreams");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isOCRProcessing, setIsOCRProcessing] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
