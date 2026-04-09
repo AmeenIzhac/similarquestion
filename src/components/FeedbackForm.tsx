@@ -81,52 +81,55 @@ export function FeedbackForm() {
 
   const inputStyle: React.CSSProperties = {
     width: '100%',
-    padding: '10px 12px',
-    borderRadius: 'var(--radius-sm)',
-    border: '1px solid var(--color-border)',
+    padding: '11px 14px',
+    borderRadius: 'var(--radius-md)',
+    border: '1px solid transparent',
+    backgroundColor: 'var(--color-bg)',
     fontSize: '13px',
-    fontFamily: 'var(--font-family)',
+    fontFamily: 'var(--font-body)',
     color: 'var(--color-text)',
     outline: 'none',
-    transition: 'border-color var(--transition-fast)',
+    transition: 'all var(--transition-fast)',
     boxSizing: 'border-box',
   };
 
   return (
     <form
       onSubmit={handleSubmit}
+      data-testid="feedback-form"
       style={{
-        padding: '14px',
-        border: '1px solid var(--color-border)',
-        borderRadius: 'var(--radius-sm)',
-        backgroundColor: 'var(--color-surface)',
+        padding: '16px',
+        borderRadius: 'var(--radius-md)',
+        backgroundColor: 'var(--color-bg)',
         display: 'flex',
         flexDirection: 'column',
-        gap: '10px'
+        gap: '10px',
       }}
     >
-      <div style={{ fontSize: '13px', color: 'var(--color-text)', lineHeight: 1.5, fontWeight: 600 }}>
-        Share feedback, report bugs, or suggest features you'd like to see.
+      <div style={{ fontSize: '13px', color: 'var(--color-text)', lineHeight: 1.5, fontWeight: 500 }}>
+        Share feedback, report bugs, or suggest features.
       </div>
       <textarea
+        data-testid="feedback-message-input"
         name="message"
         placeholder="What needs fixing?"
         value={formData.message}
         onChange={handleInputChange}
         rows={3}
-        style={{ ...inputStyle, resize: 'vertical' }}
+        style={{ ...inputStyle, resize: 'vertical', backgroundColor: 'var(--color-surface)' }}
       />
       <input
+        data-testid="feedback-email-input"
         type="email"
         name="email"
         placeholder="Email"
         required
         value={formData.email}
         onChange={handleInputChange}
-        style={inputStyle}
+        style={{ ...inputStyle, backgroundColor: 'var(--color-surface)' }}
       />
       <div style={{ fontSize: '11px', color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
-        Your email is needed to sometimes ask for clarification if feedback is not clear.
+        Your email is needed for clarification if feedback is unclear.
       </div>
       {formStatus.message && (
         <div style={{
@@ -138,23 +141,24 @@ export function FeedbackForm() {
         </div>
       )}
       <button
+        data-testid="feedback-submit-btn"
         type="submit"
         disabled={formStatus.isSubmitting}
         style={{
           alignSelf: 'flex-end',
-          padding: '8px 18px',
+          padding: '9px 20px',
           backgroundColor: formStatus.isSubmitting ? 'var(--color-text-muted)' : 'var(--color-primary)',
           color: '#fff',
           border: 'none',
-          borderRadius: 'var(--radius-sm)',
+          borderRadius: 'var(--radius-full)',
           cursor: formStatus.isSubmitting ? 'not-allowed' : 'pointer',
           fontSize: '13px',
-          fontWeight: 600,
-          fontFamily: 'var(--font-family)',
-          transition: 'background var(--transition-fast)',
+          fontWeight: 500,
+          fontFamily: 'var(--font-body)',
+          transition: 'all var(--transition-fast)',
         }}
       >
-        {formStatus.isSubmitting ? 'Sending…' : 'Send Message'}
+        {formStatus.isSubmitting ? 'Sending...' : 'Send'}
       </button>
     </form>
   );

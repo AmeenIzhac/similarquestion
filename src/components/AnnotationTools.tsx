@@ -15,28 +15,34 @@ export function AnnotationTools({
   undoLastAnnotation
 }: AnnotationToolsProps) {
   const [showClearConfirm, setShowClearConfirm] = useState(false);
-  const buttonStyle = (isActive: boolean, isDanger = false): React.CSSProperties => ({
+
+  const btnBase: React.CSSProperties = {
     flex: 1,
-    padding: '8px 10px',
-    backgroundColor: isActive ? 'var(--color-primary)' : isDanger ? 'var(--color-danger)' : 'var(--color-surface)',
-    color: isActive ? '#fff' : isDanger ? '#fff' : 'var(--color-text)',
-    border: `1px solid ${isActive ? 'var(--color-primary)' : isDanger ? 'var(--color-danger)' : 'var(--color-border)'}`,
-    borderRadius: 'var(--radius-sm)',
+    padding: '9px 12px',
+    borderRadius: 'var(--radius-full)',
     cursor: 'pointer',
     fontSize: '12px',
-    fontWeight: 600,
+    fontWeight: 500,
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: '4px',
+    gap: '5px',
     transition: 'all var(--transition-fast)',
-    fontFamily: 'var(--font-family)',
+    fontFamily: 'var(--font-body)',
+  };
+
+  const buttonStyle = (isActive: boolean, isDanger = false): React.CSSProperties => ({
+    ...btnBase,
+    backgroundColor: isActive ? 'var(--color-primary)' : isDanger ? 'var(--color-danger)' : 'var(--color-bg)',
+    color: isActive ? '#fff' : isDanger ? '#fff' : 'var(--color-text)',
+    border: 'none',
   });
 
   return (
     <>
-      <div style={{ display: 'flex', gap: '4px' }}>
+      <div style={{ display: 'flex', gap: '6px' }}>
         <button
+          data-testid="annotation-pen-btn"
           onClick={() => setAnnotationMode(annotationMode === 'pen' ? 'none' : 'pen')}
           style={buttonStyle(annotationMode === 'pen')}
           title="Draw on question"
@@ -50,6 +56,7 @@ export function AnnotationTools({
           Pen
         </button>
         <button
+          data-testid="annotation-eraser-btn"
           onClick={() => setAnnotationMode(annotationMode === 'eraser' ? 'none' : 'eraser')}
           style={buttonStyle(annotationMode === 'eraser')}
           title="Erase annotations"
@@ -61,8 +68,9 @@ export function AnnotationTools({
           Eraser
         </button>
       </div>
-      <div style={{ display: 'flex', gap: '4px' }}>
+      <div style={{ display: 'flex', gap: '6px' }}>
         <button
+          data-testid="annotation-undo-btn"
           onClick={undoLastAnnotation}
           style={buttonStyle(false)}
           title="Undo last annotation"
@@ -74,6 +82,7 @@ export function AnnotationTools({
           Undo
         </button>
         <button
+          data-testid="annotation-clear-btn"
           onClick={() => setShowClearConfirm(true)}
           style={buttonStyle(false, true)}
           title="Clear all annotations"
@@ -93,14 +102,15 @@ export function AnnotationTools({
             style={{
               position: 'fixed',
               inset: 0,
-              background: 'rgba(0,0,0,0.4)',
+              background: 'rgba(0,0,0,0.25)',
               zIndex: 100,
-              backdropFilter: 'blur(2px)',
-              WebkitBackdropFilter: 'blur(2px)',
+              backdropFilter: 'blur(4px)',
+              WebkitBackdropFilter: 'blur(4px)',
             }}
           />
           <div
-            className="animate-fade-in"
+            className="animate-scale-in"
+            data-testid="clear-confirm-modal"
             style={{
               position: 'fixed',
               top: '50%',
@@ -109,7 +119,7 @@ export function AnnotationTools({
               backgroundColor: 'var(--color-surface)',
               border: '1px solid var(--color-border)',
               borderRadius: 'var(--radius-lg)',
-              padding: '24px',
+              padding: '28px',
               zIndex: 101,
               boxShadow: 'var(--shadow-lg)',
               textAlign: 'center',
@@ -117,38 +127,40 @@ export function AnnotationTools({
               width: '90vw',
             }}
           >
-            <p style={{ margin: '0 0 16px', fontSize: '14px', fontWeight: 600, color: 'var(--color-text)' }}>
+            <p style={{ margin: '0 0 20px', fontSize: '15px', fontWeight: 600, color: 'var(--color-text)', fontFamily: 'var(--font-heading)' }}>
               Clear all annotations?
             </p>
-            <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+            <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
               <button
+                data-testid="clear-confirm-cancel"
                 onClick={() => setShowClearConfirm(false)}
                 style={{
-                  padding: '8px 20px',
-                  backgroundColor: 'var(--color-surface)',
+                  padding: '9px 22px',
+                  backgroundColor: 'var(--color-bg)',
                   color: 'var(--color-text)',
-                  border: '1px solid var(--color-border)',
-                  borderRadius: 'var(--radius-sm)',
+                  border: 'none',
+                  borderRadius: 'var(--radius-full)',
                   cursor: 'pointer',
                   fontSize: '13px',
-                  fontWeight: 600,
-                  fontFamily: 'var(--font-family)',
+                  fontWeight: 500,
+                  fontFamily: 'var(--font-body)',
                 }}
               >
                 Cancel
               </button>
               <button
+                data-testid="clear-confirm-yes"
                 onClick={() => { clearAnnotations(); setShowClearConfirm(false); }}
                 style={{
-                  padding: '8px 20px',
+                  padding: '9px 22px',
                   backgroundColor: 'var(--color-danger)',
                   color: '#fff',
-                  border: '1px solid var(--color-danger)',
-                  borderRadius: 'var(--radius-sm)',
+                  border: 'none',
+                  borderRadius: 'var(--radius-full)',
                   cursor: 'pointer',
                   fontSize: '13px',
-                  fontWeight: 600,
-                  fontFamily: 'var(--font-family)',
+                  fontWeight: 500,
+                  fontFamily: 'var(--font-body)',
                 }}
               >
                 Clear

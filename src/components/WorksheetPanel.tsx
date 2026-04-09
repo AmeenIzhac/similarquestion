@@ -32,21 +32,21 @@ export function WorksheetPanel({
   }, [isSavingPdf, selectedQuestions, pdfMode]);
 
   return (
-    <div style={{
-      marginTop: '15px',
-      padding: '12px',
-      border: '1px solid var(--color-border)',
-      borderRadius: 'var(--radius-sm)',
-      backgroundColor: 'var(--color-surface)',
+    <div data-testid="worksheet-panel" style={{
+      marginTop: '8px',
+      padding: '16px',
+      borderRadius: 'var(--radius-md)',
+      backgroundColor: 'var(--color-bg)',
       display: 'flex',
       flexDirection: 'column',
-      gap: '10px'
+      gap: '12px',
     }}>
       <div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-          <h4 style={{ margin: 0, fontSize: '13px', color: 'var(--color-text)', fontWeight: 'bold' }}>Worksheet</h4>
+          <h4 style={{ margin: 0, fontSize: '13px', color: 'var(--color-text)', fontWeight: 600 }}>Worksheet</h4>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <button
+              data-testid="worksheet-hide-btn"
               onClick={onHide}
               style={{
                 background: 'transparent',
@@ -54,8 +54,8 @@ export function WorksheetPanel({
                 color: 'var(--color-text-secondary)',
                 cursor: 'pointer',
                 fontSize: '12px',
-                fontWeight: 600,
-                padding: '4px 8px'
+                fontWeight: 500,
+                padding: '4px 8px',
               }}
               aria-label="Hide worksheet"
             >
@@ -63,6 +63,7 @@ export function WorksheetPanel({
             </button>
             <div style={{ position: 'relative', display: 'inline-block' }}>
               <button
+                data-testid="worksheet-download-btn"
                 onClick={() => {
                   const dropdown = document.getElementById('downloadDropdown');
                   if (dropdown) {
@@ -73,33 +74,34 @@ export function WorksheetPanel({
                 style={{
                   backgroundColor: selectedQuestions.length === 0 || isSavingPdf ? 'var(--color-text-muted)' : 'var(--color-primary)',
                   color: '#fff',
-                  border: selectedQuestions.length === 0 || isSavingPdf ? '1px solid var(--color-text-muted)' : '1px solid var(--color-primary)',
-                  padding: '6px 12px',
-                  borderRadius: 'var(--radius-sm)',
+                  border: 'none',
+                  padding: '7px 14px',
+                  borderRadius: 'var(--radius-full)',
                   cursor: selectedQuestions.length === 0 || isSavingPdf ? 'not-allowed' : 'pointer',
                   fontSize: '12px',
+                  fontWeight: 500,
                   display: 'flex',
                   alignItems: 'center',
                   gap: '4px',
-                  minWidth: '120px',
-                  justifyContent: 'space-between'
+                  minWidth: '110px',
+                  justifyContent: 'space-between',
                 }}
               >
-                {isSavingPdf ? 'Saving...' : `Download ${pdfMode === 'questions' ? 'Questions' : pdfMode === 'answers' ? 'Answers' : 'Q&A'}`}
-                <span style={{ fontSize: '10px', marginLeft: '4px' }}>▼</span>
+                {isSavingPdf ? 'Saving...' : `Download ${pdfMode === 'questions' ? 'Qs' : pdfMode === 'answers' ? 'As' : 'Q&A'}`}
+                <span style={{ fontSize: '9px', marginLeft: '2px' }}>&#9662;</span>
               </button>
               <div
                 style={{
                   position: 'absolute',
                   right: 0,
                   backgroundColor: 'var(--color-surface)',
-                  borderRadius: 'var(--radius-sm)',
-                  boxShadow: 'var(--shadow-md)',
+                  borderRadius: 'var(--radius-md)',
+                  boxShadow: 'var(--shadow-lg)',
                   zIndex: 10,
                   marginTop: '4px',
                   minWidth: '160px',
                   display: 'none',
-                  border: '1px solid var(--color-border)'
+                  overflow: 'hidden',
                 }}
                 id="downloadDropdown"
               >
@@ -110,25 +112,18 @@ export function WorksheetPanel({
                 ].map(({ mode, label }) => (
                   <div
                     key={mode}
+                    data-testid={`worksheet-download-${mode}`}
                     style={{
-                      padding: '8px 16px',
+                      padding: '10px 16px',
                       cursor: 'pointer',
                       fontSize: '13px',
                       color: 'var(--color-text)',
                       backgroundColor: 'transparent',
-                      transition: 'all 0.2s',
+                      transition: 'all 0.15s',
                       borderBottom: mode === 'interleaved' ? 'none' : '1px solid var(--color-border-light)',
-                      ...(mode === 'interleaved' && {
-                        borderBottomLeftRadius: '4px',
-                        borderBottomRightRadius: '4px'
-                      }),
-                      ...(mode === 'questions' && {
-                        borderTopLeftRadius: '4px',
-                        borderTopRightRadius: '4px'
-                      })
                     }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = '#f2f2f3';
+                      e.currentTarget.style.backgroundColor = 'var(--color-bg)';
                     }}
                     onMouseLeave={(e) => {
                       e.currentTarget.style.backgroundColor = 'transparent';
@@ -149,37 +144,37 @@ export function WorksheetPanel({
 
         <div style={{
           backgroundColor: 'var(--color-surface)',
-          borderRadius: 'var(--radius-sm)',
-          border: '1px dashed var(--color-border)',
+          borderRadius: 'var(--radius-md)',
+          border: '2px dashed var(--color-border)',
           padding: '16px',
           textAlign: 'center',
-          marginBottom: '10px',
-          minHeight: '100px',
+          marginBottom: '4px',
+          minHeight: '90px',
           display: 'flex',
           flexDirection: 'column',
-          justifyContent: 'center'
+          justifyContent: 'center',
         }}>
           {selectedQuestions.length > 0 ? (
             <div style={{
               display: 'flex',
               flexWrap: 'wrap',
-              gap: '10px',
+              gap: '8px',
               justifyContent: 'center',
               maxHeight: '200px',
               overflowY: 'auto',
-              padding: '5px'
+              padding: '4px',
             }}>
               {selectedQuestions.map((labelId) => (
                 <div
                   key={labelId}
+                  data-testid={`worksheet-item-${labelId}`}
                   style={{
                     position: 'relative',
-                    width: '60px',
-                    height: '60px',
-                    borderRadius: '4px',
+                    width: '56px',
+                    height: '56px',
+                    borderRadius: 'var(--radius-sm)',
                     overflow: 'hidden',
-                    border: '1px solid var(--color-border)',
-                    backgroundColor: 'var(--color-surface-alt)'
+                    backgroundColor: 'var(--color-surface-alt)',
                   }}
                   onMouseEnter={() => setHoveredSelected(labelId)}
                   onMouseLeave={() => setHoveredSelected(null)}
@@ -191,8 +186,8 @@ export function WorksheetPanel({
                       width: '100%',
                       height: '100%',
                       objectFit: 'cover',
-                      opacity: hoveredSelected === labelId ? 0.7 : 1,
-                      transition: 'opacity 0.2s'
+                      opacity: hoveredSelected === labelId ? 0.6 : 1,
+                      transition: 'opacity 0.15s',
                     }}
                   />
                   <button
@@ -208,9 +203,9 @@ export function WorksheetPanel({
                       height: '18px',
                       borderRadius: '50%',
                       border: 'none',
-                      backgroundColor: 'rgba(255, 77, 79, 0.9)',
+                      backgroundColor: 'var(--color-danger)',
                       color: '#fff',
-                      fontSize: '12px',
+                      fontSize: '11px',
                       fontWeight: 'bold',
                       display: 'flex',
                       alignItems: 'center',
@@ -218,19 +213,19 @@ export function WorksheetPanel({
                       cursor: 'pointer',
                       padding: 0,
                       opacity: hoveredSelected === labelId ? 1 : 0,
-                      transition: 'opacity 0.2s',
-                      lineHeight: 1
+                      transition: 'opacity 0.15s',
+                      lineHeight: 1,
                     }}
                     aria-label={`Remove ${formatLabelId(labelId)}`}
                   >
-                    ×
+                    x
                   </button>
                 </div>
               ))}
             </div>
           ) : (
             <p style={{ margin: 0, fontSize: '13px', color: 'var(--color-text-muted)' }}>
-              Once you select questions for the worksheet they'll appear here
+              Selected questions will appear here
             </p>
           )}
         </div>

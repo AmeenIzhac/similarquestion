@@ -46,14 +46,12 @@ export function ChatBot({ questionId, questionImageUrl, markschemeImageUrl, isOp
         }
     }, [isOpen]);
 
-    // Fetch and encode the question image when it changes
     useEffect(() => {
         if (questionImageUrl) {
             fetchImageAsBase64(questionImageUrl, setImageBase64);
         }
     }, [questionImageUrl]);
 
-    // Fetch and encode the markscheme image when it changes
     useEffect(() => {
         if (markschemeImageUrl) {
             fetchImageAsBase64(markschemeImageUrl, setMarkschemeBase64);
@@ -76,7 +74,6 @@ export function ChatBot({ questionId, questionImageUrl, markschemeImageUrl, isOp
         }
     };
 
-    // Reset chat when question changes
     useEffect(() => {
         setMessages([]);
         setStreamingContent('');
@@ -94,7 +91,6 @@ export function ChatBot({ questionId, questionImageUrl, markschemeImageUrl, isOp
         setIsLoading(true);
         setStreamingContent('');
 
-        // Track if this is starting step mode or continuing it
         if (userMessage.toLowerCase().includes('step by step') || userMessage.toLowerCase().includes('explain how')) {
             setIsInStepMode(true);
             setCurrentStep(1);
@@ -103,7 +99,6 @@ export function ChatBot({ questionId, questionImageUrl, markschemeImageUrl, isOp
         }
 
         try {
-            // Different prompts for step-by-step mode vs regular help
             let systemPrompt: string;
 
             if (isInStepMode || userMessage.toLowerCase().includes('step by step') || userMessage.toLowerCase().includes('explain how')) {
@@ -142,7 +137,6 @@ Your role is to:
 Format your response clearly.`;
             }
 
-            // Construct the messages array
             const apiMessages = [
                 { role: 'system', content: systemPrompt },
                 ...messages.map(m => ({ role: m.role, content: m.content }))
@@ -161,7 +155,7 @@ Format your response clearly.`;
 
             userContent.push({ type: 'text', text: userMessage });
 
-            if (userContent.length > 1) { // Has images + text
+            if (userContent.length > 1) {
                 apiMessages.push({
                     role: 'user',
                     content: userContent
@@ -170,7 +164,6 @@ Format your response clearly.`;
                 apiMessages.push({ role: 'user', content: userMessage } as any);
             }
 
-            // Call our Firebase Function instead of OpenAI directly
             const response = await fetch('https://streamintuitive-yoiv4yepya-uc.a.run.app', {
                 method: 'POST',
                 headers: {
@@ -219,10 +212,8 @@ Format your response clearly.`;
                 }
             }
 
-            // Check if the solution is complete
             if (fullContent.includes('[SOLUTION COMPLETE]')) {
                 setIsSolutionComplete(true);
-                // Remove the marker from the displayed content
                 fullContent = fullContent.replace('[SOLUTION COMPLETE]', '').trim();
             }
 
@@ -270,7 +261,6 @@ Format your response clearly.`;
 
     if (!isOpen) return null;
 
-    // Custom markdown styles
     const markdownComponents = {
         p: ({ children }: { children?: React.ReactNode }) => (
             <p style={{ margin: '0 0 8px 0', lineHeight: 1.6 }}>{children}</p>
@@ -289,16 +279,33 @@ Format your response clearly.`;
         ),
         code: ({ children }: { children?: React.ReactNode }) => (
             <code style={{
-                backgroundColor: 'rgba(0,0,0,0.05)',
+                backgroundColor: 'var(--color-bg)',
                 padding: '2px 6px',
-                borderRadius: '4px',
-                fontFamily: 'monospace'
+                borderRadius: '6px',
+                fontFamily: 'monospace',
+                fontSize: '0.9em',
             }}>{children}</code>
         ),
     };
 
+    const quickActionBtn: React.CSSProperties = {
+        padding: '12px 16px',
+        backgroundColor: 'var(--color-surface)',
+        border: '1px solid var(--color-border)',
+        borderRadius: 'var(--radius-md)',
+        cursor: 'pointer',
+        fontSize: '13px',
+        color: 'var(--color-text)',
+        textAlign: 'left',
+        transition: 'all 0.15s',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '10px',
+        fontFamily: 'var(--font-body)',
+    };
+
     return (
-        <div style={isInline ? {
+        <div data-testid="chatbot-panel" style={isInline ? {
             flex: 1,
             backgroundColor: 'var(--color-surface)',
             borderTop: '1px solid var(--color-border)',
@@ -306,19 +313,20 @@ Format your response clearly.`;
             flexDirection: 'column',
             zIndex: 10,
             minHeight: '0',
-            overflow: 'hidden'
+            overflow: 'hidden',
         } : {
             position: 'fixed',
-            right: 0,
-            top: 0,
-            bottom: 0,
+            right: '8px',
+            top: '8px',
+            bottom: '8px',
             width: '380px',
             backgroundColor: 'var(--color-surface)',
-            borderLeft: '1px solid var(--color-border)',
             display: 'flex',
             flexDirection: 'column',
             zIndex: 100,
-            boxShadow: '-4px 0 20px rgba(0, 0, 0, 0.06)'
+            borderRadius: 'var(--radius-lg)',
+            boxShadow: 'var(--shadow-lg)',
+            overflow: 'hidden',
         }}>
             {/* Header */}
             <div style={{
@@ -327,22 +335,24 @@ Format your response clearly.`;
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                backgroundColor: 'var(--color-primary)'
+                backgroundColor: 'var(--color-primary)',
+                borderRadius: isInline ? '0' : 'var(--radius-lg) var(--radius-lg) 0 0',
             }}>
                 <div>
-                    <div style={{ fontWeight: 600, color: '#ffffff', fontSize: '15px' }}>
+                    <div style={{ fontWeight: 600, color: '#ffffff', fontSize: '15px', fontFamily: 'var(--font-heading)' }}>
                         Maths Tutor
                     </div>
-                    <div style={{ fontSize: '12px', color: 'rgba(255, 255, 255, 0.85)' }}>
+                    <div style={{ fontSize: '12px', color: 'rgba(255, 255, 255, 0.8)' }}>
                         {isInStepMode ? `Step ${currentStep}` : 'Ready to help'}
                     </div>
                 </div>
                 <button
+                    data-testid="chatbot-close-btn"
                     onClick={onClose}
                     style={{
-                        background: 'rgba(255, 255, 255, 0.2)',
+                        background: 'rgba(255, 255, 255, 0.15)',
                         border: 'none',
-                        borderRadius: '6px',
+                        borderRadius: 'var(--radius-full)',
                         width: '32px',
                         height: '32px',
                         cursor: 'pointer',
@@ -350,13 +360,13 @@ Format your response clearly.`;
                         alignItems: 'center',
                         justifyContent: 'center',
                         color: '#ffffff',
-                        fontSize: '18px',
-                        transition: 'background 0.2s'
+                        fontSize: '16px',
+                        transition: 'background 0.15s',
                     }}
-                    onMouseOver={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.3)'}
-                    onMouseOut={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)'}
+                    onMouseOver={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.25)'}
+                    onMouseOut={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)'}
                 >
-                    ×
+                    x
                 </button>
             </div>
 
@@ -367,36 +377,23 @@ Format your response clearly.`;
                 padding: '20px',
                 display: 'flex',
                 flexDirection: 'column',
-                gap: '16px',
-                backgroundColor: 'var(--color-bg)'
+                gap: '14px',
+                backgroundColor: 'var(--color-bg)',
             }}>
                 {messages.length === 0 && !streamingContent && (
-                    <div style={{ textAlign: 'center', padding: '40px 20px' }}>
-                        <h3 style={{ margin: '0 0 8px', fontSize: '16px', fontWeight: 600, color: 'var(--color-text)' }}>
-                            Need help with this question?
+                    <div style={{ textAlign: 'center', padding: '32px 16px' }}>
+                        <h3 style={{ margin: '0 0 8px', fontSize: '17px', fontWeight: 600, color: 'var(--color-text)', fontFamily: 'var(--font-heading)' }}>
+                            Need help?
                         </h3>
                         <p style={{ margin: '0 0 24px', fontSize: '13px', color: 'var(--color-text-secondary)', lineHeight: 1.5 }}>
-                            I can see the question image and help you solve it step by step.
+                            I can see the question and help you solve it step by step.
                         </p>
 
-                        {/* Quick action buttons */}
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                             <button
+                                data-testid="chatbot-quick-explain"
                                 onClick={() => handleQuickAction('explain')}
-                                style={{
-                                    padding: '12px 16px',
-                                    backgroundColor: 'var(--color-surface)',
-                                    border: '1px solid var(--color-border)',
-                                    borderRadius: '12px',
-                                    cursor: 'pointer',
-                                    fontSize: '13px',
-                                    color: 'var(--color-text)',
-                                    textAlign: 'left',
-                                    transition: 'all 0.2s',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '10px'
-                                }}
+                                style={quickActionBtn}
                                 onMouseOver={(e) => {
                                     e.currentTarget.style.backgroundColor = 'var(--color-primary-light)';
                                     e.currentTarget.style.borderColor = 'var(--color-primary)';
@@ -409,21 +406,9 @@ Format your response clearly.`;
                                 Step by step
                             </button>
                             <button
+                                data-testid="chatbot-quick-hint"
                                 onClick={() => handleQuickAction('hint')}
-                                style={{
-                                    padding: '12px 16px',
-                                    backgroundColor: 'var(--color-surface)',
-                                    border: '1px solid var(--color-border)',
-                                    borderRadius: '12px',
-                                    cursor: 'pointer',
-                                    fontSize: '13px',
-                                    color: 'var(--color-text)',
-                                    textAlign: 'left',
-                                    transition: 'all 0.2s',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '10px'
-                                }}
+                                style={quickActionBtn}
                                 onMouseOver={(e) => {
                                     e.currentTarget.style.backgroundColor = 'var(--color-primary-light)';
                                     e.currentTarget.style.borderColor = 'var(--color-primary)';
@@ -436,21 +421,9 @@ Format your response clearly.`;
                                 Give me a hint
                             </button>
                             <button
+                                data-testid="chatbot-quick-concept"
                                 onClick={() => handleQuickAction('concept')}
-                                style={{
-                                    padding: '12px 16px',
-                                    backgroundColor: 'var(--color-surface)',
-                                    border: '1px solid var(--color-border)',
-                                    borderRadius: '12px',
-                                    cursor: 'pointer',
-                                    fontSize: '13px',
-                                    color: 'var(--color-text)',
-                                    textAlign: 'left',
-                                    transition: 'all 0.2s',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '10px'
-                                }}
+                                style={quickActionBtn}
                                 onMouseOver={(e) => {
                                     e.currentTarget.style.backgroundColor = 'var(--color-primary-light)';
                                     e.currentTarget.style.borderColor = 'var(--color-primary)';
@@ -469,20 +442,21 @@ Format your response clearly.`;
                 {messages.map((message, index) => (
                     <div
                         key={index}
+                        data-testid={`chat-message-${index}`}
                         style={{
                             display: 'flex',
-                            justifyContent: message.role === 'user' ? 'flex-end' : 'flex-start'
+                            justifyContent: message.role === 'user' ? 'flex-end' : 'flex-start',
                         }}
                     >
                         <div style={{
                             maxWidth: '85%',
                             padding: '12px 16px',
-                            borderRadius: message.role === 'user' ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
-                            backgroundColor: message.role === 'user' ? 'var(--color-primary-light)' : 'var(--color-surface)',
-                            color: 'var(--color-text)',
+                            borderRadius: message.role === 'user' ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
+                            backgroundColor: message.role === 'user' ? 'var(--color-primary)' : 'var(--color-surface)',
+                            color: message.role === 'user' ? '#fff' : 'var(--color-text)',
                             fontSize: '14px',
                             lineHeight: 1.7,
-                            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.06)'
+                            boxShadow: '0 1px 2px rgba(0, 0, 0, 0.04)',
                         }}>
                             {message.role === 'assistant' ? (
                                 <ReactMarkdown
@@ -504,12 +478,12 @@ Format your response clearly.`;
                         <div style={{
                             maxWidth: '85%',
                             padding: '12px 16px',
-                            borderRadius: '16px 16px 16px 4px',
+                            borderRadius: '18px 18px 18px 4px',
                             backgroundColor: 'var(--color-surface)',
                             color: 'var(--color-text)',
                             fontSize: '14px',
                             lineHeight: 1.7,
-                            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.06)'
+                            boxShadow: '0 1px 2px rgba(0, 0, 0, 0.04)',
                         }}>
                             <ReactMarkdown
                                 remarkPlugins={[remarkMath]}
@@ -520,11 +494,12 @@ Format your response clearly.`;
                             </ReactMarkdown>
                             <span style={{
                                 display: 'inline-block',
-                                width: '8px',
-                                height: '16px',
+                                width: '7px',
+                                height: '15px',
                                 backgroundColor: 'var(--color-primary)',
                                 marginLeft: '2px',
-                                animation: 'blink 1s infinite'
+                                borderRadius: '2px',
+                                animation: 'blink 1s infinite',
                             }} />
                         </div>
                     </div>
@@ -533,37 +508,16 @@ Format your response clearly.`;
                 {isLoading && !streamingContent && (
                     <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
                         <div style={{
-                            padding: '12px 20px',
-                            borderRadius: '16px 16px 16px 4px',
+                            padding: '14px 20px',
+                            borderRadius: '18px 18px 18px 4px',
                             backgroundColor: 'var(--color-surface)',
-                            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.06)',
+                            boxShadow: '0 1px 2px rgba(0, 0, 0, 0.04)',
                             display: 'flex',
-                            gap: '6px'
+                            gap: '5px',
                         }}>
-                            <span style={{
-                                width: '8px',
-                                height: '8px',
-                                backgroundColor: 'var(--color-primary)',
-                                borderRadius: '50%',
-                                animation: 'bounce 1.4s infinite ease-in-out',
-                                animationDelay: '0s'
-                            }} />
-                            <span style={{
-                                width: '8px',
-                                height: '8px',
-                                backgroundColor: 'var(--color-primary)',
-                                borderRadius: '50%',
-                                animation: 'bounce 1.4s infinite ease-in-out',
-                                animationDelay: '0.2s'
-                            }} />
-                            <span style={{
-                                width: '8px',
-                                height: '8px',
-                                backgroundColor: 'var(--color-primary)',
-                                borderRadius: '50%',
-                                animation: 'bounce 1.4s infinite ease-in-out',
-                                animationDelay: '0.4s'
-                            }} />
+                            <span style={{ width: '7px', height: '7px', backgroundColor: 'var(--color-primary)', borderRadius: '50%', animation: 'bounce 1.4s infinite ease-in-out', animationDelay: '0s' }} />
+                            <span style={{ width: '7px', height: '7px', backgroundColor: 'var(--color-primary)', borderRadius: '50%', animation: 'bounce 1.4s infinite ease-in-out', animationDelay: '0.2s' }} />
+                            <span style={{ width: '7px', height: '7px', backgroundColor: 'var(--color-primary)', borderRadius: '50%', animation: 'bounce 1.4s infinite ease-in-out', animationDelay: '0.4s' }} />
                         </div>
                     </div>
                 )}
@@ -579,23 +533,22 @@ Format your response clearly.`;
                     backgroundColor: 'var(--color-primary-light)',
                     display: 'flex',
                     flexDirection: 'column',
-                    gap: '10px'
+                    gap: '10px',
                 }}>
                     {isSolutionComplete ? (
-                        // Solution complete message - plain text on light green background
-                        <p style={{
+                        <p data-testid="chatbot-solution-complete" style={{
                             margin: 0,
                             textAlign: 'center',
                             color: 'var(--color-primary)',
                             fontSize: '14px',
-                            fontWeight: 600
+                            fontWeight: 600,
                         }}>
                             Solution Complete
                         </p>
                     ) : (
-                        // Next step button and helper text
                         <>
                             <button
+                                data-testid="chatbot-next-step-btn"
                                 onClick={handleNextStep}
                                 style={{
                                     width: '100%',
@@ -603,15 +556,16 @@ Format your response clearly.`;
                                     backgroundColor: 'var(--color-primary)',
                                     color: '#ffffff',
                                     border: 'none',
-                                    borderRadius: '12px',
+                                    borderRadius: 'var(--radius-full)',
                                     cursor: 'pointer',
                                     fontSize: '13px',
-                                    fontWeight: 600,
+                                    fontWeight: 500,
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'center',
                                     gap: '8px',
-                                    transition: 'opacity 0.2s'
+                                    transition: 'opacity 0.15s',
+                                    fontFamily: 'var(--font-body)',
                                 }}
                                 onMouseOver={(e) => e.currentTarget.style.opacity = '0.9'}
                                 onMouseOut={(e) => e.currentTarget.style.opacity = '1'}
@@ -622,7 +576,7 @@ Format your response clearly.`;
                                 margin: 0,
                                 fontSize: '12px',
                                 color: 'var(--color-text-secondary)',
-                                textAlign: 'center'
+                                textAlign: 'center',
                             }}>
                                 Don't understand? Type your question below instead
                             </p>
@@ -634,30 +588,35 @@ Format your response clearly.`;
             {/* Input area */}
             <form
                 onSubmit={handleSubmit}
+                data-testid="chatbot-input-form"
                 style={{
-                    padding: '16px 20px',
+                    padding: '14px 18px',
                     borderTop: '1px solid var(--color-border)',
                     backgroundColor: 'var(--color-surface)',
                     display: 'flex',
-                    gap: '10px'
+                    gap: '10px',
+                    borderRadius: isInline ? '0' : '0 0 var(--radius-lg) var(--radius-lg)',
                 }}
             >
                 <input
                     ref={inputRef}
+                    data-testid="chatbot-input"
                     type="text"
                     value={inputValue}
                     onChange={(e) => setInputValue(e.target.value)}
-                    placeholder={isInStepMode ? "Ask a question about this step..." : "Ask a question..."}
+                    placeholder={isInStepMode ? "Ask about this step..." : "Ask a question..."}
                     disabled={isLoading}
                     style={{
                         flex: 1,
-                        padding: '12px 16px',
+                        padding: '11px 16px',
                         border: '1px solid var(--color-border)',
-                        borderRadius: '24px',
-                        fontSize: '16px',
+                        borderRadius: 'var(--radius-full)',
+                        fontSize: '14px',
                         outline: 'none',
                         backgroundColor: 'var(--color-bg)',
-                        transition: 'border-color 0.2s, box-shadow 0.2s'
+                        transition: 'all 0.15s',
+                        fontFamily: 'var(--font-body)',
+                        color: 'var(--color-text)',
                     }}
                     onFocus={(e) => {
                         e.currentTarget.style.borderColor = 'var(--color-primary)';
@@ -669,18 +628,20 @@ Format your response clearly.`;
                     }}
                 />
                 <button
+                    data-testid="chatbot-send-btn"
                     type="submit"
                     disabled={isLoading || !inputValue.trim()}
                     style={{
-                        padding: '12px 20px',
-                        backgroundColor: isLoading || !inputValue.trim() ? 'var(--color-border)' : 'var(--color-primary)',
+                        padding: '11px 18px',
+                        backgroundColor: isLoading || !inputValue.trim() ? 'var(--color-bg)' : 'var(--color-primary)',
                         color: isLoading || !inputValue.trim() ? 'var(--color-text-muted)' : '#ffffff',
                         border: 'none',
-                        borderRadius: '24px',
+                        borderRadius: 'var(--radius-full)',
                         cursor: isLoading || !inputValue.trim() ? 'not-allowed' : 'pointer',
                         fontSize: '13px',
-                        fontWeight: 600,
-                        transition: 'all 0.2s'
+                        fontWeight: 500,
+                        transition: 'all 0.15s',
+                        fontFamily: 'var(--font-body)',
                     }}
                 >
                     Send
@@ -688,15 +649,15 @@ Format your response clearly.`;
             </form>
 
             <style>{`
-        @keyframes blink {
-          0%, 50% { opacity: 1; }
-          51%, 100% { opacity: 0; }
-        }
-        @keyframes bounce {
-          0%, 80%, 100% { transform: scale(0.6); }
-          40% { transform: scale(1); }
-        }
-      `}</style>
+                @keyframes blink {
+                    0%, 50% { opacity: 1; }
+                    51%, 100% { opacity: 0; }
+                }
+                @keyframes bounce {
+                    0%, 80%, 100% { transform: scale(0.6); }
+                    40% { transform: scale(1); }
+                }
+            `}</style>
         </div>
     );
 }
