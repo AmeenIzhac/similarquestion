@@ -5,9 +5,10 @@ import react from '@vitejs/plugin-react';
 export default defineConfig({
   plugins: [react()],
   optimizeDeps: {
-    exclude: ['lucide-react'],
+    include: ['lucide-react'],
   },
   server: {
+    allowedHosts: true,
     proxy: {
       '/api/openai': {
         target: 'https://api.openai.com',
