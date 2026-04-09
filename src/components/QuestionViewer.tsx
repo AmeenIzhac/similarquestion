@@ -81,6 +81,7 @@ export function QuestionViewer({
   const pdfMenuRef = useRef<HTMLDivElement | null>(null);
   const [pdfMenuOpen, setPdfMenuOpen] = useState(false);
   const [isTitleExpanded, setIsTitleExpanded] = useState(false);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [qMinScale, setQMinScale] = useState(0.1);
   const [mMinScale, setMMinScale] = useState(0.1);
 
@@ -170,6 +171,78 @@ export function QuestionViewer({
 
   return (
     <>
+      {showClearConfirm && (
+        <>
+          <div
+            onClick={() => setShowClearConfirm(false)}
+            style={{
+              position: 'fixed',
+              inset: 0,
+              background: 'rgba(0,0,0,0.4)',
+              zIndex: 100,
+              backdropFilter: 'blur(2px)',
+              WebkitBackdropFilter: 'blur(2px)',
+            }}
+          />
+          <div
+            className="animate-fade-in"
+            style={{
+              position: 'fixed',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              backgroundColor: 'var(--color-surface)',
+              border: '1px solid var(--color-border)',
+              borderRadius: 'var(--radius-lg)',
+              padding: '24px',
+              zIndex: 101,
+              boxShadow: 'var(--shadow-lg)',
+              textAlign: 'center',
+              maxWidth: '300px',
+              width: '90vw',
+            }}
+          >
+            <p style={{ margin: '0 0 16px', fontSize: '14px', fontWeight: 600, color: 'var(--color-text)' }}>
+              Clear all annotations?
+            </p>
+            <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+              <button
+                onClick={() => setShowClearConfirm(false)}
+                style={{
+                  padding: '8px 20px',
+                  backgroundColor: 'var(--color-surface)',
+                  color: 'var(--color-text)',
+                  border: '1px solid var(--color-border)',
+                  borderRadius: 'var(--radius-sm)',
+                  cursor: 'pointer',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  fontFamily: 'var(--font-family)',
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => { clearAnnotations(); setShowClearConfirm(false); }}
+                style={{
+                  padding: '8px 20px',
+                  backgroundColor: 'var(--color-danger)',
+                  color: '#fff',
+                  border: '1px solid var(--color-danger)',
+                  borderRadius: 'var(--radius-sm)',
+                  cursor: 'pointer',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  fontFamily: 'var(--font-family)',
+                }}
+              >
+                Clear
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+
       {/* Toolbar */}
       <div style={{
         flex: 'none',
@@ -269,7 +342,7 @@ export function QuestionViewer({
                 </svg>
               </button>
               <button
-                onClick={clearAnnotations}
+                onClick={() => setShowClearConfirm(true)}
                 style={toolbarBtnStyle('danger')}
                 title="Clear all"
               >
