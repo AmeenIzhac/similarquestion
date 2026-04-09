@@ -37,6 +37,9 @@ interface QuestionViewerProps {
   isChatOpen: boolean;
   onToggleChat: () => void;
   isMobile: boolean;
+  setAnnotationMode: (mode: AnnotationMode) => void;
+  clearAnnotations: () => void;
+  undoLastAnnotation: () => void;
 }
 
 export function QuestionViewer({
@@ -70,7 +73,10 @@ export function QuestionViewer({
   onToggleSelection,
   isChatOpen,
   onToggleChat,
-  isMobile
+  isMobile,
+  setAnnotationMode,
+  clearAnnotations,
+  undoLastAnnotation
 }: QuestionViewerProps) {
   const pdfMenuRef = useRef<HTMLDivElement | null>(null);
   const [pdfMenuOpen, setPdfMenuOpen] = useState(false);
@@ -223,93 +229,144 @@ export function QuestionViewer({
         <div style={{
           display: 'flex',
           alignItems: 'center',
-          gap: isMobile ? '8px' : '10px',
+          gap: isMobile ? '6px' : '10px',
           padding: isMobile ? '4px 12px 12px' : '4px 16px 8px',
           paddingLeft: isMobile ? '12px' : '16px',
         }}>
-          {/* PDF view dropdown */}
-          <div ref={pdfMenuRef} style={{ position: 'relative' }}>
-            <button
-              onClick={() => setPdfMenuOpen((prev: boolean) => !prev)}
-              style={toolbarBtnStyle(viewMode !== 'question' ? 'primary' : 'default')}
-            >
-              {isMobile
-                ? <><Eye size={14} /> <span style={{ fontSize: '9px' }}>▼</span></>
-                : <>{viewMode === 'question' ? 'View paper/markscheme' : viewMode === 'paper' ? 'Paper PDF' : 'Markscheme PDF'} <span style={{ fontSize: '9px' }}>▼</span></>
-              }
-            </button>
-            {pdfMenuOpen && (
-              <div
-                className="animate-fade-in"
-                style={{
-                  position: 'absolute',
-                  top: 'calc(100% + 4px)',
-                  left: 0,
-                  backgroundColor: 'var(--color-surface)',
-                  border: '1px solid var(--color-border)',
-                  borderRadius: 'var(--radius-md)',
-                  boxShadow: 'var(--shadow-lg)',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  minWidth: '180px',
-                  zIndex: 20,
-                  overflow: 'hidden',
-                }}
+          {isMobile ? (
+            <>
+              {/* Mobile: Pen, Eraser, Undo, Clear, then Help */}
+              <button
+                onClick={() => setAnnotationMode(annotationMode === 'pen' ? 'none' : 'pen')}
+                style={toolbarBtnStyle(annotationMode === 'pen' ? 'primary' : 'default')}
+                title="Pen"
               >
-                {[
-                  { label: 'Show question image', mode: 'question' as ViewMode, url: true },
-                  { label: 'View full paper PDF', mode: 'paper' as ViewMode, url: !!paperPdfUrl },
-                  { label: 'View markscheme PDF', mode: 'markscheme' as ViewMode, url: !!markschemePdfUrl },
-                ].map(({ label, mode, url }, i) => (
-                  <button
-                    key={mode}
-                    type="button"
-                    onClick={() => { if (url) { setViewMode(mode); setPdfMenuOpen(false); } }}
-                    disabled={!url}
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 19l7-7 3 3-7 7-3-3z"></path>
+                  <path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"></path>
+                  <path d="M2 2l7.586 7.586"></path>
+                  <circle cx="11" cy="11" r="2"></circle>
+                </svg>
+              </button>
+              <button
+                onClick={() => setAnnotationMode(annotationMode === 'eraser' ? 'none' : 'eraser')}
+                style={toolbarBtnStyle(annotationMode === 'eraser' ? 'primary' : 'default')}
+                title="Eraser"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M20 20H7L3 16l9-9 9 9-4 4z"></path>
+                  <path d="M6.5 13.5L12 8"></path>
+                </svg>
+              </button>
+              <button
+                onClick={undoLastAnnotation}
+                style={toolbarBtnStyle()}
+                title="Undo"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M3 7v6h6"></path>
+                  <path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"></path>
+                </svg>
+              </button>
+              <button
+                onClick={clearAnnotations}
+                style={toolbarBtnStyle('danger')}
+                title="Clear all"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="3 6 5 6 21 6"></polyline>
+                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                </svg>
+              </button>
+
+              <div style={{ marginLeft: 'auto' }}>
+                <button
+                  onClick={onToggleChat}
+                  style={toolbarBtnStyle(isChatOpen ? 'danger' : 'primary')}
+                  title={isChatOpen ? 'Close help' : 'Get help'}
+                >
+                  <MessageCircle size={14} />
+                  {isChatOpen ? 'Close' : 'Help'}
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              {/* Desktop: PDF dropdown, Worksheet toggle, Chat toggle */}
+              <div ref={pdfMenuRef} style={{ position: 'relative' }}>
+                <button
+                  onClick={() => setPdfMenuOpen((prev: boolean) => !prev)}
+                  style={toolbarBtnStyle(viewMode !== 'question' ? 'primary' : 'default')}
+                >
+                  {viewMode === 'question' ? 'View paper/markscheme' : viewMode === 'paper' ? 'Paper PDF' : 'Markscheme PDF'} <span style={{ fontSize: '9px' }}>▼</span>
+                </button>
+                {pdfMenuOpen && (
+                  <div
+                    className="animate-fade-in"
                     style={{
-                      padding: '10px 14px',
-                      background: viewMode === mode ? 'var(--color-primary-light)' : 'transparent',
-                      border: 'none',
-                      borderBottom: i < 2 ? '1px solid var(--color-border-light)' : 'none',
-                      fontSize: '13px',
-                      textAlign: 'left',
-                      cursor: url ? 'pointer' : 'not-allowed',
-                      color: url ? 'var(--color-text)' : 'var(--color-text-muted)',
-                      fontWeight: viewMode === mode ? 600 : 400,
-                      fontFamily: 'var(--font-family)',
+                      position: 'absolute',
+                      top: 'calc(100% + 4px)',
+                      left: 0,
+                      backgroundColor: 'var(--color-surface)',
+                      border: '1px solid var(--color-border)',
+                      borderRadius: 'var(--radius-md)',
+                      boxShadow: 'var(--shadow-lg)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      minWidth: '180px',
+                      zIndex: 20,
+                      overflow: 'hidden',
                     }}
                   >
-                    {label}
-                  </button>
-                ))}
+                    {[
+                      { label: 'Show question image', mode: 'question' as ViewMode, url: true },
+                      { label: 'View full paper PDF', mode: 'paper' as ViewMode, url: !!paperPdfUrl },
+                      { label: 'View markscheme PDF', mode: 'markscheme' as ViewMode, url: !!markschemePdfUrl },
+                    ].map(({ label, mode, url }, i) => (
+                      <button
+                        key={mode}
+                        type="button"
+                        onClick={() => { if (url) { setViewMode(mode); setPdfMenuOpen(false); } }}
+                        disabled={!url}
+                        style={{
+                          padding: '10px 14px',
+                          background: viewMode === mode ? 'var(--color-primary-light)' : 'transparent',
+                          border: 'none',
+                          borderBottom: i < 2 ? '1px solid var(--color-border-light)' : 'none',
+                          fontSize: '13px',
+                          textAlign: 'left',
+                          cursor: url ? 'pointer' : 'not-allowed',
+                          color: url ? 'var(--color-text)' : 'var(--color-text-muted)',
+                          fontWeight: viewMode === mode ? 600 : 400,
+                          fontFamily: 'var(--font-family)',
+                        }}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
-            )}
-          </div>
 
-          {/* Worksheet toggle */}
-          <button
-            onClick={onToggleSelection}
-            style={toolbarBtnStyle(isCurrentSelected ? 'danger' : 'primary')}
-            title={isCurrentSelected ? 'Remove from worksheet' : 'Add to worksheet'}
-          >
-            {isCurrentSelected ? <Minus size={14} /> : <Plus size={14} />}
-            {!isMobile && (isCurrentSelected ? 'Remove' : 'Add to worksheet')}
-          </button>
+              <button
+                onClick={onToggleSelection}
+                style={toolbarBtnStyle(isCurrentSelected ? 'danger' : 'primary')}
+                title={isCurrentSelected ? 'Remove from worksheet' : 'Add to worksheet'}
+              >
+                {isCurrentSelected ? <Minus size={14} /> : <Plus size={14} />}
+                {isCurrentSelected ? 'Remove' : 'Add to worksheet'}
+              </button>
 
-          {/* Chat toggle */}
-          <button
-            onClick={onToggleChat}
-            style={{
-              ...toolbarBtnStyle(isChatOpen ? 'danger' : 'primary'),
-            }}
-            title={isChatOpen ? 'Close help' : 'Get help'}
-          >
-            <MessageCircle size={14} />
-            {isMobile
-              ? (isChatOpen ? 'Close' : 'Help')
-              : (isChatOpen ? 'Close Help' : 'Get Help')
-            }
-          </button>
+              <button
+                onClick={onToggleChat}
+                style={toolbarBtnStyle(isChatOpen ? 'danger' : 'primary')}
+                title={isChatOpen ? 'Close help' : 'Get help'}
+              >
+                <MessageCircle size={14} />
+                {isChatOpen ? 'Close Help' : 'Get Help'}
+              </button>
+            </>
+          )}
         </div>
       </div>
 

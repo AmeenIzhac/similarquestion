@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { AnnotationTools } from './AnnotationTools';
 import { WorksheetPanel } from './WorksheetPanel';
 import { FeedbackForm } from './FeedbackForm';
-import { Menu, X, SlidersHorizontal, FileText, MessageSquare, Download } from 'lucide-react';
-import type { AnnotationMode, Match } from '../types/index';
+import { Menu, X, SlidersHorizontal, FileText, MessageSquare, Download, Plus, Minus, Eye } from 'lucide-react';
+import type { AnnotationMode, Match, ViewMode } from '../types/index';
 
 interface SidebarProps {
   isMobile: boolean;
@@ -17,6 +17,13 @@ interface SidebarProps {
   topMatches?: Match[];
   mobileOpen: boolean;
   setMobileOpen: (open: boolean) => void;
+  // Mobile-only: PDF view & worksheet toggle
+  viewMode?: ViewMode;
+  setViewMode?: (mode: ViewMode) => void;
+  paperPdfUrl?: string | null;
+  markschemePdfUrl?: string | null;
+  isCurrentSelected?: boolean;
+  onToggleSelection?: () => void;
 }
 
 export function Sidebar({
@@ -30,12 +37,30 @@ export function Sidebar({
   onOpenFilters,
   topMatches,
   mobileOpen,
-  setMobileOpen
+  setMobileOpen,
+  viewMode,
+  setViewMode,
+  paperPdfUrl,
+  markschemePdfUrl,
+  isCurrentSelected,
+  onToggleSelection
 }: SidebarProps) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [showWorksheet, setShowWorksheet] = useState(false);
   const [isSavingAll, setIsSavingAll] = useState(false);
   const [showFeedbackForm, setShowFeedbackForm] = useState(false);
+  const [pdfMenuOpen, setPdfMenuOpen] = useState(false);
+  const pdfMenuRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (pdfMenuRef.current && !pdfMenuRef.current.contains(e.target as Node)) {
+        setPdfMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
 
   const handleDownloadAll = async () => {
     if (!topMatches || topMatches.length === 0 || isSavingAll) return;
@@ -75,6 +100,78 @@ export function Sidebar({
           <SlidersHorizontal size={16} />
           Filters
         </button>
+
+        {/* Mobile-only: PDF view & worksheet toggle */}
+        {isMobile && viewMode !== undefined && setViewMode && (
+          <>
+            <div ref={pdfMenuRef} style={{ position: 'relative' }}>
+              <button
+                onClick={() => setPdfMenuOpen((prev) => !prev)}
+                style={sidebarBtnStyle(viewMode !== 'question')}
+              >
+                <Eye size={16} />
+                {viewMode === 'question' ? 'View paper/markscheme' : viewMode === 'paper' ? 'Paper PDF' : 'Markscheme PDF'}
+                <span style={{ fontSize: '9px' }}>▼</span>
+              </button>
+              {pdfMenuOpen && (
+                <div
+                  className="animate-fade-in"
+                  style={{
+                    position: 'absolute',
+                    top: 'calc(100% + 4px)',
+                    left: 0,
+                    right: 0,
+                    backgroundColor: 'var(--color-surface)',
+                    border: '1px solid var(--color-border)',
+                    borderRadius: 'var(--radius-md)',
+                    boxShadow: 'var(--shadow-lg)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    zIndex: 60,
+                    overflow: 'hidden',
+                  }}
+                >
+                  {[
+                    { label: 'Show question image', mode: 'question' as ViewMode, url: true },
+                    { label: 'View full paper PDF', mode: 'paper' as ViewMode, url: !!paperPdfUrl },
+                    { label: 'View markscheme PDF', mode: 'markscheme' as ViewMode, url: !!markschemePdfUrl },
+                  ].map(({ label, mode, url }, i) => (
+                    <button
+                      key={mode}
+                      type="button"
+                      onClick={() => { if (url) { setViewMode(mode); setPdfMenuOpen(false); } }}
+                      disabled={!url}
+                      style={{
+                        padding: '10px 14px',
+                        background: viewMode === mode ? 'var(--color-primary-light)' : 'transparent',
+                        border: 'none',
+                        borderBottom: i < 2 ? '1px solid var(--color-border-light)' : 'none',
+                        fontSize: '13px',
+                        textAlign: 'left',
+                        cursor: url ? 'pointer' : 'not-allowed',
+                        color: url ? 'var(--color-text)' : 'var(--color-text-muted)',
+                        fontWeight: viewMode === mode ? 600 : 400,
+                        fontFamily: 'var(--font-family)',
+                      }}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {onToggleSelection && (
+              <button
+                onClick={onToggleSelection}
+                style={sidebarBtnStyle()}
+              >
+                {isCurrentSelected ? <Minus size={16} /> : <Plus size={16} />}
+                {isCurrentSelected ? 'Remove from worksheet' : 'Add to worksheet'}
+              </button>
+            )}
+          </>
+        )}
 
         <AnnotationTools
           annotationMode={annotationMode}

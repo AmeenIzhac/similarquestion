@@ -4,6 +4,7 @@ import { useAnnotations } from './hooks/useAnnotations';
 import { useSearch } from './hooks/useSearch';
 import { Menu } from 'lucide-react';
 import type { LevelFilter, CalculatorFilter, ViewMode } from './types/index';
+import { getDocumentBaseFromLabel } from './utils/formatters';
 
 function App() {
   // Filter state
@@ -129,6 +130,10 @@ function App() {
     }
   }, [hasStarted, searchText, searchByText]);
 
+  const documentBase = useMemo(() => currentMatch ? getDocumentBaseFromLabel(currentMatch.labelId) : null, [currentMatch?.labelId]);
+  const paperPdfUrl = documentBase ? `/edexcel-gcse-maths-papers/${documentBase}.pdf` : null;
+  const markschemePdfUrl = documentBase ? `/edexcel-gcse-maths-markschemes/${documentBase}.pdf` : null;
+
   const isLanding = !hasStarted && !isProcessing && (!currentMatch || currentMatch.labelId === 'error');
 
   return (
@@ -145,6 +150,12 @@ function App() {
         topMatches={topMatches}
         mobileOpen={mobileMenuOpen}
         setMobileOpen={setMobileMenuOpen}
+        viewMode={viewMode}
+        setViewMode={setViewMode}
+        paperPdfUrl={paperPdfUrl}
+        markschemePdfUrl={markschemePdfUrl}
+        isCurrentSelected={isCurrentSelected}
+        onToggleSelection={toggleCurrentQuestionSelection}
       />
 
       {/* Main Content Area */}
@@ -275,6 +286,9 @@ function App() {
             isChatOpen={isChatOpen}
             onToggleChat={() => setIsChatOpen(prev => !prev)}
             isMobile={isMobile}
+            setAnnotationMode={setAnnotationMode}
+            clearAnnotations={clearAnnotations}
+            undoLastAnnotation={undoLastAnnotation}
           />
         )}
 
