@@ -9,6 +9,28 @@ interface Message {
     content: string;
 }
 
+interface PregeneratedData {
+    hint: string;
+    concept: string;
+    steps: string[];
+}
+
+type PregeneratedResponses = Record<string, PregeneratedData>;
+
+let pregeneratedCache: PregeneratedResponses | null = null;
+
+async function loadPregeneratedResponses(): Promise<PregeneratedResponses> {
+    if (pregeneratedCache) return pregeneratedCache;
+    try {
+        const res = await fetch('/pregenerated-responses.json');
+        if (!res.ok) return {};
+        pregeneratedCache = await res.json();
+        return pregeneratedCache!;
+    } catch {
+        return {};
+    }
+}
+
 interface ChatBotProps {
     questionId: string;
     questionText?: string;
@@ -29,6 +51,8 @@ export function ChatBot({ questionId, questionImageUrl, markschemeImageUrl, isOp
     const [imageBase64, setImageBase64] = useState<string | null>(null);
     const [markschemeBase64, setMarkschemeBase64] = useState<string | null>(null);
     const [isSolutionComplete, setIsSolutionComplete] = useState(false);
+    const [pregeneratedSteps, setPregeneratedSteps] = useState<string[]>([]);
+    const [usingPregenerated, setUsingPregenerated] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
 
@@ -80,10 +104,15 @@ export function ChatBot({ questionId, questionImageUrl, markschemeImageUrl, isOp
         setIsInStepMode(false);
         setCurrentStep(0);
         setIsSolutionComplete(false);
+        setPregeneratedSteps([]);
+        setUsingPregenerated(false);
     }, [questionId]);
 
     const sendMessage = async (userMessage: string, isStepRequest: boolean = false) => {
         if (!userMessage.trim() || isLoading) return;
+
+        // Temporarily pause pregenerated mode for this live clarification
+        setUsingPregenerated(false);
 
         const newUserMessage: Message = { role: 'user', content: userMessage };
         setMessages(prev => [...prev, newUserMessage]);
@@ -219,6 +248,12 @@ Format your response clearly.`;
 
             setMessages(prev => [...prev, { role: 'assistant', content: fullContent }]);
             setStreamingContent('');
+
+            // Resume pregenerated steps if there are still some left
+            setPregeneratedSteps(prev => {
+                if (prev.length > 0) setUsingPregenerated(true);
+                return prev;
+            });
         } catch (error) {
             console.error('Chat error:', error);
             setMessages(prev => [...prev, {
@@ -235,7 +270,57 @@ Format your response clearly.`;
         sendMessage(inputValue);
     };
 
-    const handleQuickAction = (action: string) => {
+    const handleQuickAction = async (action: string) => {
+        if (action === 'next') {
+            const message = "I understand, let's move to the next step.";
+            sendMessage(message, true);
+            return;
+        }
+
+        const pregenerated = await loadPregeneratedResponses();
+        const data = pregenerated[questionId];
+
+        if (data) {
+            // Use pregenerated response
+            let userMessage = '';
+            let assistantContent = '';
+
+            switch (action) {
+                case 'explain':
+                    userMessage = 'Please explain how to solve this question step by step, one step at a time.';
+                    if (data.steps && data.steps.length > 0) {
+                        setPregeneratedSteps(data.steps);
+                        setUsingPregenerated(true);
+                        setIsInStepMode(true);
+                        setCurrentStep(1);
+                        assistantContent = data.steps[0];
+                    } else {
+                        // Fallback to API
+                        sendMessage(userMessage);
+                        return;
+                    }
+                    break;
+                case 'hint':
+                    userMessage = 'Can you give me a hint to get started on this question?';
+                    assistantContent = data.hint;
+                    break;
+                case 'concept':
+                    userMessage = 'What mathematical concepts do I need to know for this question?';
+                    assistantContent = data.concept;
+                    break;
+            }
+
+            if (assistantContent) {
+                setMessages(prev => [
+                    ...prev,
+                    { role: 'user', content: userMessage },
+                    { role: 'assistant', content: assistantContent },
+                ]);
+                return;
+            }
+        }
+
+        // Fallback: no pregenerated data, call API
         let message = '';
         switch (action) {
             case 'explain':
@@ -247,16 +332,47 @@ Format your response clearly.`;
             case 'concept':
                 message = 'What mathematical concepts do I need to know for this question?';
                 break;
-            case 'next':
-                message = "I understand, let's move to the next step.";
-                sendMessage(message, true);
-                return;
         }
         sendMessage(message);
     };
 
     const handleNextStep = () => {
+        // If using pregenerated steps, serve the next one
+        if (usingPregenerated && pregeneratedSteps.length > 0) {
+            const nextStepIndex = currentStep; // currentStep is 1-based, array is 0-based
+            if (nextStepIndex < pregeneratedSteps.length) {
+                const stepContent = pregeneratedSteps[nextStepIndex];
+                const isLastStep = nextStepIndex === pregeneratedSteps.length - 1;
+                setCurrentStep(prev => prev + 1);
+                if (isLastStep) {
+                    setIsSolutionComplete(true);
+                }
+                setMessages(prev => [
+                    ...prev,
+                    { role: 'user', content: "I understand, what's the next step?" },
+                    { role: 'assistant', content: stepContent },
+                ]);
+                return;
+            } else {
+                // All pregenerated steps used
+                setIsSolutionComplete(true);
+                return;
+            }
+        }
+
+        // Fallback to API
         sendMessage("I understand, what's the next step?", true);
+    };
+
+    const handleRefreshChat = () => {
+        setMessages([]);
+        setStreamingContent('');
+        setIsInStepMode(false);
+        setCurrentStep(0);
+        setIsSolutionComplete(false);
+        setInputValue('');
+        setPregeneratedSteps([]);
+        setUsingPregenerated(false);
     };
 
     if (!isOpen) return null;
@@ -346,28 +462,58 @@ Format your response clearly.`;
                         {isInStepMode ? `Step ${currentStep}` : 'Ready to help'}
                     </div>
                 </div>
-                <button
-                    data-testid="chatbot-close-btn"
-                    onClick={onClose}
-                    style={{
-                        background: 'rgba(255, 255, 255, 0.15)',
-                        border: 'none',
-                        borderRadius: 'var(--radius-full)',
-                        width: '32px',
-                        height: '32px',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        color: '#ffffff',
-                        fontSize: '16px',
-                        transition: 'background 0.15s',
-                    }}
-                    onMouseOver={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.25)'}
-                    onMouseOut={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)'}
-                >
-                    x
-                </button>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    <button
+                        data-testid="chatbot-refresh-btn"
+                        onClick={handleRefreshChat}
+                        title="Refresh chat"
+                        style={{
+                            background: 'rgba(255, 255, 255, 0.15)',
+                            border: 'none',
+                            borderRadius: 'var(--radius-full)',
+                            width: '32px',
+                            height: '32px',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: '#ffffff',
+                            fontSize: '14px',
+                            transition: 'background 0.15s',
+                        }}
+                        onMouseOver={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.25)'}
+                        onMouseOut={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)'}
+                    >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M21 2v6h-6"></path>
+                            <path d="M3 12a9 9 0 0 1 15-6.7L21 8"></path>
+                            <path d="M3 22v-6h6"></path>
+                            <path d="M21 12a9 9 0 0 1-15 6.7L3 16"></path>
+                        </svg>
+                    </button>
+                    <button
+                        data-testid="chatbot-close-btn"
+                        onClick={onClose}
+                        style={{
+                            background: 'rgba(255, 255, 255, 0.15)',
+                            border: 'none',
+                            borderRadius: 'var(--radius-full)',
+                            width: '32px',
+                            height: '32px',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: '#ffffff',
+                            fontSize: '16px',
+                            transition: 'background 0.15s',
+                        }}
+                        onMouseOver={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.25)'}
+                        onMouseOut={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)'}
+                    >
+                        x
+                    </button>
+                </div>
             </div>
 
             {/* Messages area */}
