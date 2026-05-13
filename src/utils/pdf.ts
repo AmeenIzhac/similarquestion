@@ -1,5 +1,6 @@
 import jsPDF from 'jspdf';
 import { PdfMode } from '../types/index';
+import { assetUrl } from './assets';
 
 export async function generatePdf(
     selectedQuestions: string[],
@@ -19,8 +20,8 @@ export async function generatePdf(
     let atPageStart = true;
 
     const renderItems = selectedQuestions.flatMap((labelId) => {
-        const questionPath = `/edexcel-gcse-maths-questions/${labelId}`;
-        const answerPath = `/edexcel-gcse-maths-answers/${labelId}`;
+        const questionPath = assetUrl(`/edexcel-gcse-maths-questions/${labelId}`);
+        const answerPath = assetUrl(`/edexcel-gcse-maths-answers/${labelId}`);
 
         if (pdfMode === 'questions') {
             return [{ labelId, path: questionPath, type: 'question' as const }];

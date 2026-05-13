@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { formatLabelId } from '../utils/formatters';
 import { generatePdf } from '../utils/pdf';
+import { assetUrl } from '../utils/assets';
 import type { PdfMode } from '../types/index';
 
 interface WorksheetPanelProps {
@@ -180,7 +181,7 @@ export function WorksheetPanel({
                   onMouseLeave={() => setHoveredSelected(null)}
                 >
                   <img
-                    src={`/edexcel-gcse-maths-questions/${labelId}`}
+                    src={assetUrl(`/edexcel-gcse-maths-questions/${labelId}`)}
                     alt={labelId}
                     style={{
                       width: '100%',

@@ -27,3 +27,9 @@ dist-ssr
 # Environment files
 *.env
 *.env.*
+
+# Large asset folders — served from Cloudflare R2 via VITE_R2_PUBLIC_URL
+public/edexcel-gcse-maths-papers/
+public/edexcel-gcse-maths-markschemes/
+public/edexcel-gcse-maths-questions/
+public/edexcel-gcse-maths-answers/

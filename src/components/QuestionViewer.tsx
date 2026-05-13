@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useMemo } from 'react';
 import { ChevronLeft, ChevronRight, Plus, Minus, Eye, MessageCircle } from 'lucide-react';
 import type { Match, ViewMode, AnnotationMode, TextInputPosition } from '../types/index';
 import { formatLabelId, getDocumentBaseFromLabel } from '../utils/formatters';
+import { assetUrl } from '../utils/assets';
 import { ChatBot } from './ChatBot';
 import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
 
@@ -148,8 +149,8 @@ export function QuestionViewer({
   }, [questionContainerRef, markschemeContainerRef, showMarkscheme, isMobile, isChatOpen]);
 
   const documentBase = useMemo(() => getDocumentBaseFromLabel(currentMatch?.labelId), [currentMatch?.labelId]);
-  const paperPdfUrl = documentBase ? `/edexcel-gcse-maths-papers/${documentBase}.pdf` : null;
-  const markschemePdfUrl = documentBase ? `/edexcel-gcse-maths-markschemes/${documentBase}.pdf` : null;
+  const paperPdfUrl = documentBase ? assetUrl(`/edexcel-gcse-maths-papers/${documentBase}.pdf`) : null;
+  const markschemePdfUrl = documentBase ? assetUrl(`/edexcel-gcse-maths-markschemes/${documentBase}.pdf`) : null;
 
   const toolbarBtn = (variant: 'default' | 'primary' | 'danger' = 'default'): React.CSSProperties => ({
     padding: isMobile ? '7px 10px' : '6px 12px',
@@ -492,7 +493,7 @@ export function QuestionViewer({
                 <TransformComponent wrapperStyle={{ width: '100%', minHeight: '100%' }} contentStyle={{ width: '100%' }}>
                   <div style={{ position: 'relative', width: '100%', backgroundColor: 'var(--color-surface)' }}>
                     <img
-                      src={`/edexcel-gcse-maths-questions/${currentMatch.labelId}`}
+                      src={assetUrl(`/edexcel-gcse-maths-questions/${currentMatch.labelId}`)}
                       alt={currentMatch.labelId}
                       onLoad={handleImageLoad}
                       style={{
@@ -591,7 +592,7 @@ export function QuestionViewer({
                   <TransformComponent wrapperStyle={{ width: '100%', minHeight: '100%' }} contentStyle={{ width: '100%' }}>
                     <div style={{ position: 'relative', width: '100%', backgroundColor: 'var(--color-surface)' }}>
                       <img
-                        src={`/edexcel-gcse-maths-answers/${currentMatch.labelId}`}
+                        src={assetUrl(`/edexcel-gcse-maths-answers/${currentMatch.labelId}`)}
                         alt={`Markscheme for ${currentMatch.labelId}`}
                         onLoad={handleImageLoad}
                         style={{
@@ -671,8 +672,8 @@ export function QuestionViewer({
           <ChatBot
             questionId={currentMatch.labelId}
             questionText={currentMatch.text}
-            questionImageUrl={`/edexcel-gcse-maths-questions/${currentMatch.labelId}`}
-            markschemeImageUrl={`/edexcel-gcse-maths-answers/${currentMatch.labelId}`}
+            questionImageUrl={assetUrl(`/edexcel-gcse-maths-questions/${currentMatch.labelId}`)}
+            markschemeImageUrl={assetUrl(`/edexcel-gcse-maths-answers/${currentMatch.labelId}`)}
             isOpen={true}
             onClose={onToggleChat}
             isInline={true}
@@ -684,8 +685,8 @@ export function QuestionViewer({
         <ChatBot
           questionId={currentMatch.labelId}
           questionText={currentMatch.text}
-          questionImageUrl={`/edexcel-gcse-maths-questions/${currentMatch.labelId}`}
-          markschemeImageUrl={`/edexcel-gcse-maths-answers/${currentMatch.labelId}`}
+          questionImageUrl={assetUrl(`/edexcel-gcse-maths-questions/${currentMatch.labelId}`)}
+          markschemeImageUrl={assetUrl(`/edexcel-gcse-maths-answers/${currentMatch.labelId}`)}
           isOpen={isChatOpen}
           onClose={onToggleChat}
           isInline={false}

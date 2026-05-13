@@ -5,6 +5,7 @@ import { useSearch } from './hooks/useSearch';
 import { Menu } from 'lucide-react';
 import type { LevelFilter, CalculatorFilter, ViewMode } from './types/index';
 import { getDocumentBaseFromLabel } from './utils/formatters';
+import { assetUrl } from './utils/assets';
 
 function App() {
   const [levelFilter, setLevelFilter] = useState<LevelFilter>('all');
@@ -122,8 +123,8 @@ function App() {
   }, [hasStarted, searchText, searchByText]);
 
   const documentBase = useMemo(() => currentMatch ? getDocumentBaseFromLabel(currentMatch.labelId) : null, [currentMatch?.labelId]);
-  const paperPdfUrl = documentBase ? `/edexcel-gcse-maths-papers/${documentBase}.pdf` : null;
-  const markschemePdfUrl = documentBase ? `/edexcel-gcse-maths-markschemes/${documentBase}.pdf` : null;
+  const paperPdfUrl = documentBase ? assetUrl(`/edexcel-gcse-maths-papers/${documentBase}.pdf`) : null;
+  const markschemePdfUrl = documentBase ? assetUrl(`/edexcel-gcse-maths-markschemes/${documentBase}.pdf`) : null;
 
   const isLanding = !hasStarted && !isProcessing && (!currentMatch || currentMatch.labelId === 'error');
 
