@@ -7,3 +7,4 @@ export { WorksheetPanel } from './WorksheetPanel';
 export { FeedbackForm } from './FeedbackForm';
 export { AnnotationTools } from './AnnotationTools';
 export { ChatBot } from './ChatBot';
+export { TutorDock } from './TutorDock';

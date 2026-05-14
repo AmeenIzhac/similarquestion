@@ -3,9 +3,10 @@ import { AnnotationTools } from './AnnotationTools';
 import { WorksheetPanel } from './WorksheetPanel';
 import { FeedbackForm } from './FeedbackForm';
 import { X, SlidersHorizontal, FileText, MessageSquare, Download, Plus, Minus, Eye } from 'lucide-react';
-import type { AnnotationMode, Match, ViewMode } from '../types/index';
+import type { AnnotationMode, Match, ViewMode, Qualification } from '../types/index';
 
 interface SidebarProps {
+  qualification: Qualification;
   isMobile: boolean;
   annotationMode: AnnotationMode;
   setAnnotationMode: (mode: AnnotationMode) => void;
@@ -26,6 +27,7 @@ interface SidebarProps {
 }
 
 export function Sidebar({
+  qualification,
   isMobile,
   annotationMode,
   setAnnotationMode,
@@ -46,6 +48,13 @@ export function Sidebar({
 }: SidebarProps) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [showWorksheet, setShowWorksheet] = useState(false);
+  const prevSelectedCount = useRef(selectedQuestions.length);
+  useEffect(() => {
+    if (selectedQuestions.length > prevSelectedCount.current) {
+      setShowWorksheet(true);
+    }
+    prevSelectedCount.current = selectedQuestions.length;
+  }, [selectedQuestions.length]);
   const [isSavingAll, setIsSavingAll] = useState(false);
   const [showFeedbackForm, setShowFeedbackForm] = useState(false);
   const [pdfMenuOpen, setPdfMenuOpen] = useState(false);
@@ -67,7 +76,7 @@ export function Sidebar({
     try {
       const { generatePdf } = await import('../utils/pdf');
       const matchLabels = topMatches.map(m => m.labelId);
-      await generatePdf(matchLabels, 'questions', 'all-matches');
+      await generatePdf(matchLabels, 'questions', 'all-matches', qualification);
     } catch (error) {
       console.error('Error generating PDF:', error);
     } finally {
@@ -229,6 +238,7 @@ export function Sidebar({
 
         {showWorksheet && (
           <WorksheetPanel
+            qualification={qualification}
             selectedQuestions={selectedQuestions}
             removeSelectedQuestion={removeSelectedQuestion}
             onHide={() => setShowWorksheet(false)}

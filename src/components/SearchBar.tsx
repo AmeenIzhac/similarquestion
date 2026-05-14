@@ -9,6 +9,7 @@ interface SearchBarProps {
   isProcessing: boolean;
   isMobile: boolean;
   placeholder?: string;
+  autoGrow?: boolean;
 }
 
 export function SearchBar({
@@ -17,7 +18,8 @@ export function SearchBar({
   onSearch,
   isProcessing,
   isMobile,
-  placeholder: customPlaceholder
+  placeholder: customPlaceholder,
+  autoGrow = false,
 }: SearchBarProps) {
   const placeholder = customPlaceholder || (isMobile ? "Describe a question..." : "Describe the question of your dreams");
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -87,7 +89,7 @@ export function SearchBar({
       style={{
         flex: 1,
         backgroundColor: 'var(--color-surface)',
-        borderRadius: imagePreview ? 'var(--radius-lg)' : 'var(--radius-full)',
+        borderRadius: '28px',
         padding: isMobile ? '4px 8px' : '6px 10px',
         boxShadow: 'var(--shadow-lg)',
         display: 'flex',
@@ -151,17 +153,33 @@ export function SearchBar({
         </div>
       )}
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: '4px', minWidth: 0 }}>
-        <Search size={18} style={{ flexShrink: 0, color: 'var(--color-text-muted)', marginLeft: '6px' }} />
+      <div style={{ display: 'flex', alignItems: 'flex-end', gap: '4px', minWidth: 0 }}>
+        <div style={{
+          height: '42px',
+          display: 'flex',
+          alignItems: 'center',
+          flexShrink: 0,
+          marginLeft: '6px',
+        }}>
+          <Search size={18} style={{ color: 'var(--color-text-muted)' }} />
+        </div>
         <textarea
           data-testid="search-input"
           value={searchText}
           onChange={(e) => setSearchText(e.target.value)}
-          onInput={(e) => {
+          onInput={autoGrow ? (e) => {
             const t = e.currentTarget as HTMLTextAreaElement;
             t.style.height = 'auto';
             t.style.height = t.scrollHeight + 'px';
-          }}
+          } : undefined}
+          onFocus={autoGrow ? (e) => {
+            const t = e.currentTarget;
+            t.style.height = 'auto';
+            t.style.height = t.scrollHeight + 'px';
+          } : undefined}
+          onBlur={autoGrow ? (e) => {
+            e.currentTarget.style.height = '';
+          } : undefined}
           onKeyDown={(e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
               e.preventDefault();
@@ -187,6 +205,7 @@ export function SearchBar({
             fontFamily: 'var(--font-body)',
             color: 'var(--color-text)',
             lineHeight: 1.5,
+            transition: 'height 180ms ease',
           }}
         />
         <button
@@ -199,6 +218,8 @@ export function SearchBar({
             border: 'none',
             cursor: (isProcessing || isOCRProcessing) ? 'not-allowed' : 'pointer',
             padding: '6px',
+            height: '42px',
+            width: '42px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',

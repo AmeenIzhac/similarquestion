@@ -33,8 +33,8 @@ export function AnnotationTools({
 
   const buttonStyle = (isActive: boolean, isDanger = false): React.CSSProperties => ({
     ...btnBase,
-    backgroundColor: isActive ? 'var(--color-primary)' : isDanger ? 'var(--color-danger)' : 'var(--color-bg)',
-    color: isActive ? '#fff' : isDanger ? '#fff' : 'var(--color-text)',
+    backgroundColor: isActive ? 'var(--color-primary)' : isDanger ? '#FDECEC' : 'var(--color-bg)',
+    color: isActive ? '#fff' : isDanger ? '#C0392B' : 'var(--color-text)',
     border: 'none',
   });
 

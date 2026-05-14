@@ -1,15 +1,20 @@
-import type { LevelFilter, CalculatorFilter } from '../types/index';
+import type { LevelFilter, CalculatorFilter, Qualification } from '../types/index';
 
 export const searchPinecone = async (
   query: string,
   topK: number = 25,
   levelFilter: LevelFilter = 'all',
-  calculatorFilter: CalculatorFilter = 'all'
+  calculatorFilter: CalculatorFilter = 'all',
+  qualification: Qualification = 'gcse'
 ) => {
   try {
     const pineconeApiKey = import.meta.env.VITE_PINECONE_API_KEY;
-    const indexHost = import.meta.env.VITE_PINECONE_INDEX_HOST;
-    const namespace = import.meta.env.VITE_PINECONE_NAMESPACE || 'example-namespace';
+    const indexHost = qualification === 'alevel'
+      ? import.meta.env.VITE_PINECONE_INDEX_HOST_ALEVEL
+      : import.meta.env.VITE_PINECONE_INDEX_HOST;
+    const namespace = qualification === 'alevel'
+      ? (import.meta.env.VITE_PINECONE_NAMESPACE_ALEVEL || '__default__')
+      : (import.meta.env.VITE_PINECONE_NAMESPACE || 'example-namespace');
     
     if (!pineconeApiKey) {
       console.error('Pinecone API key not configured');
@@ -28,10 +33,12 @@ export const searchPinecone = async (
       filter.level = levelFilter;
     }
     
-    if (calculatorFilter === 'calculator') {
-      filter.paper_number = { $in: ['2', '3'] };
-    } else if (calculatorFilter === 'non-calculator') {
-      filter.paper_number = '1';
+    if (qualification === 'gcse') {
+      if (calculatorFilter === 'calculator') {
+        filter.paper_number = { $in: ['2', '3'] };
+      } else if (calculatorFilter === 'non-calculator') {
+        filter.paper_number = '1';
+      }
     }
     
     // If no filters applied, set to undefined

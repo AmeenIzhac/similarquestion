@@ -2,15 +2,17 @@ import { useState, useCallback } from 'react';
 import { formatLabelId } from '../utils/formatters';
 import { generatePdf } from '../utils/pdf';
 import { assetUrl } from '../utils/assets';
-import type { PdfMode } from '../types/index';
+import type { PdfMode, Qualification } from '../types/index';
 
 interface WorksheetPanelProps {
+  qualification: Qualification;
   selectedQuestions: string[];
   removeSelectedQuestion: (labelId: string) => void;
   onHide: () => void;
 }
 
 export function WorksheetPanel({
+  qualification,
   selectedQuestions,
   removeSelectedQuestion,
   onHide
@@ -24,7 +26,7 @@ export function WorksheetPanel({
 
     setIsSavingPdf(true);
     try {
-      await generatePdf(selectedQuestions, pdfMode, 'selected');
+      await generatePdf(selectedQuestions, pdfMode, 'selected', qualification);
     } catch (error) {
       console.error('Error generating PDF:', error);
     } finally {
@@ -181,7 +183,7 @@ export function WorksheetPanel({
                   onMouseLeave={() => setHoveredSelected(null)}
                 >
                   <img
-                    src={assetUrl(`/edexcel-gcse-maths-questions/${labelId}`)}
+                    src={assetUrl(qualification, 'questions', labelId)}
                     alt={labelId}
                     style={{
                       width: '100%',

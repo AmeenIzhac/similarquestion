@@ -1,11 +1,12 @@
 import jsPDF from 'jspdf';
-import { PdfMode } from '../types/index';
+import type { PdfMode, Qualification } from '../types/index';
 import { assetUrl } from './assets';
 
 export async function generatePdf(
     selectedQuestions: string[],
     pdfMode: PdfMode,
-    filenamePrefix: string
+    filenamePrefix: string,
+    qualification: Qualification
 ): Promise<void> {
     if (selectedQuestions.length === 0) return;
 
@@ -20,8 +21,8 @@ export async function generatePdf(
     let atPageStart = true;
 
     const renderItems = selectedQuestions.flatMap((labelId) => {
-        const questionPath = assetUrl(`/edexcel-gcse-maths-questions/${labelId}`);
-        const answerPath = assetUrl(`/edexcel-gcse-maths-answers/${labelId}`);
+        const questionPath = assetUrl(qualification, 'questions', labelId);
+        const answerPath = assetUrl(qualification, 'answers', labelId);
 
         if (pdfMode === 'questions') {
             return [{ labelId, path: questionPath, type: 'question' as const }];

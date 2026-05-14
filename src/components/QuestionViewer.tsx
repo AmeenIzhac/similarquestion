@@ -1,17 +1,17 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
-import { ChevronLeft, ChevronRight, Plus, Minus, Eye, MessageCircle } from 'lucide-react';
-import type { Match, ViewMode, AnnotationMode, TextInputPosition } from '../types/index';
+import { ChevronLeft, ChevronRight, Plus, Minus, MessageCircle, Lightbulb } from 'lucide-react';
+import type { Match, ViewMode, AnnotationMode, TextInputPosition, Qualification } from '../types/index';
 import { formatLabelId, getDocumentBaseFromLabel } from '../utils/formatters';
 import { assetUrl } from '../utils/assets';
 import { ChatBot } from './ChatBot';
 import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
 
 interface QuestionViewerProps {
+  qualification: Qualification;
   currentMatch: Match;
   currentMatchIndex: number;
   totalMatches: number;
   viewMode: ViewMode;
-  setViewMode: (mode: ViewMode) => void;
   showMarkscheme: boolean;
   annotationMode: AnnotationMode;
   textInputPos: TextInputPosition | null;
@@ -41,14 +41,15 @@ interface QuestionViewerProps {
   setAnnotationMode: (mode: AnnotationMode) => void;
   clearAnnotations: () => void;
   undoLastAnnotation: () => void;
+  onToggleTutor: () => void;
 }
 
 export function QuestionViewer({
+  qualification,
   currentMatch,
   currentMatchIndex,
   totalMatches,
   viewMode,
-  setViewMode,
   showMarkscheme,
   annotationMode,
   textInputPos,
@@ -77,7 +78,8 @@ export function QuestionViewer({
   isMobile,
   setAnnotationMode,
   clearAnnotations,
-  undoLastAnnotation
+  undoLastAnnotation,
+  onToggleTutor,
 }: QuestionViewerProps) {
   const pdfMenuRef = useRef<HTMLDivElement | null>(null);
   const [pdfMenuOpen, setPdfMenuOpen] = useState(false);
@@ -149,8 +151,8 @@ export function QuestionViewer({
   }, [questionContainerRef, markschemeContainerRef, showMarkscheme, isMobile, isChatOpen]);
 
   const documentBase = useMemo(() => getDocumentBaseFromLabel(currentMatch?.labelId), [currentMatch?.labelId]);
-  const paperPdfUrl = documentBase ? assetUrl(`/edexcel-gcse-maths-papers/${documentBase}.pdf`) : null;
-  const markschemePdfUrl = documentBase ? assetUrl(`/edexcel-gcse-maths-markschemes/${documentBase}.pdf`) : null;
+  const paperPdfUrl = documentBase ? assetUrl(qualification, 'papers', `${documentBase}.pdf`) : null;
+  const markschemePdfUrl = documentBase ? assetUrl(qualification, 'markschemes', `${documentBase}.pdf`) : null;
 
   const toolbarBtn = (variant: 'default' | 'primary' | 'danger' = 'default'): React.CSSProperties => ({
     padding: isMobile ? '7px 10px' : '6px 12px',
@@ -248,38 +250,185 @@ export function QuestionViewer({
       {/* Toolbar */}
       <div data-testid="question-toolbar" style={{
         flex: 'none',
-        borderBottom: '1px solid var(--color-border)',
+        borderBottom: isMobile ? '1px solid var(--color-border)' : '1px solid rgba(0,0,0,0.05)',
         backgroundColor: 'var(--color-surface)',
         boxSizing: 'border-box',
       }}>
-        {/* Row 1: Title + Navigation */}
+      {!isMobile && (
+        /* Desktop: single 64px row */
+        <div style={{
+          height: '64px',
+          padding: '0 24px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '12px',
+        }}>
+          {/* Breadcrumb */}
+          <div
+            data-testid="question-breadcrumb"
+            style={{
+              fontSize: '12px',
+              color: '#9A9A9A',
+              fontFamily: 'var(--font-body)',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              minWidth: 0,
+              flex: 1,
+            }}
+          >
+            {formatLabelId(currentMatch.labelId, qualification).replace(/\s•\s/g, ' · ')}
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+            <button
+              data-testid="viewer-add-worksheet-btn"
+              type="button"
+              onClick={onToggleSelection}
+              style={{
+                height: '36px',
+                padding: '0 14px',
+                background: 'transparent',
+                color: '#5A5A5A',
+                border: 'none',
+                borderRadius: '999px',
+                fontSize: '13px',
+                fontWeight: 500,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                fontFamily: 'var(--font-body)',
+                whiteSpace: 'nowrap',
+              }}
+              title={isCurrentSelected ? 'Remove from worksheet' : 'Add to worksheet'}
+            >
+              {isCurrentSelected ? <Minus size={14} /> : <Plus size={14} />}
+              {isCurrentSelected ? 'Added' : 'Add to worksheet'}
+            </button>
+
+            <button
+              data-testid="viewer-ask-tutor-btn"
+              type="button"
+              onClick={onToggleTutor}
+              style={{
+                height: '36px',
+                padding: '0 14px',
+                background: '#2D7FF9',
+                color: '#fff',
+                border: 'none',
+                borderRadius: '999px',
+                fontSize: '13px',
+                fontWeight: 500,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                fontFamily: 'var(--font-body)',
+                whiteSpace: 'nowrap',
+              }}
+              title="Ask tutor"
+            >
+              <Lightbulb size={14} />
+              Ask tutor
+            </button>
+
+            <div style={{
+              width: '1px',
+              height: '24px',
+              background: 'rgba(0,0,0,0.08)',
+              margin: '0 4px',
+            }} />
+
+            <span
+              data-testid="match-counter"
+              title={`Question ${currentMatchIndex + 1} of ${totalMatches} in this set`}
+              style={{
+                fontSize: '12px',
+                color: '#6A6A6A',
+                background: 'rgba(0,0,0,0.04)',
+                padding: '5px 10px',
+                borderRadius: '999px',
+                fontVariantNumeric: 'tabular-nums',
+                fontFamily: 'var(--font-body)',
+              }}
+            >
+              {currentMatchIndex + 1}/{totalMatches}
+            </span>
+
+            <button
+              data-testid="prev-match-btn"
+              type="button"
+              onClick={onPrevMatch}
+              aria-label="Previous question"
+              style={{
+                width: '36px',
+                height: '36px',
+                borderRadius: '50%',
+                background: '#fff',
+                border: '1px solid rgba(0,0,0,0.12)',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#5A5A5A',
+              }}
+            >
+              <ChevronLeft size={16} />
+            </button>
+            <button
+              data-testid="next-match-btn"
+              type="button"
+              onClick={onNextMatch}
+              aria-label="Next question"
+              style={{
+                width: '36px',
+                height: '36px',
+                borderRadius: '50%',
+                background: '#fff',
+                border: '1px solid rgba(0,0,0,0.12)',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#5A5A5A',
+              }}
+            >
+              <ChevronRight size={16} />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {isMobile && (
+        /* Mobile: existing two-row toolbar */
+        <>
         <div style={{
           display: 'flex',
           alignItems: 'center',
-          gap: isMobile ? '8px' : '10px',
-          padding: isMobile ? '12px 12px 6px' : '10px 18px',
-          paddingLeft: isMobile ? '58px' : '18px',
+          gap: '8px',
+          padding: '12px 12px 6px',
+          paddingLeft: '58px',
         }}>
           <span
             data-testid="question-title"
-            onClick={() => {
-              if (isMobile) setIsTitleExpanded(!isTitleExpanded);
-            }}
+            onClick={() => setIsTitleExpanded(!isTitleExpanded)}
             style={{
-              fontSize: isMobile ? '14px' : '14px',
+              fontSize: '14px',
               fontWeight: 600,
               color: 'var(--color-text)',
               marginRight: 'auto',
-              overflow: (isMobile && isTitleExpanded) ? 'visible' : 'hidden',
-              textOverflow: (isMobile && isTitleExpanded) ? 'clip' : 'ellipsis',
-              whiteSpace: (isMobile && isTitleExpanded) ? 'normal' : 'nowrap',
+              overflow: isTitleExpanded ? 'visible' : 'hidden',
+              textOverflow: isTitleExpanded ? 'clip' : 'ellipsis',
+              whiteSpace: isTitleExpanded ? 'normal' : 'nowrap',
               minWidth: 0,
-              cursor: isMobile ? 'pointer' : 'default',
+              cursor: 'pointer',
               wordBreak: 'break-word',
               fontFamily: 'var(--font-heading)',
               letterSpacing: '-0.01em',
             }}>
-            {formatLabelId(currentMatch.labelId)}
+            {formatLabelId(currentMatch.labelId, qualification)}
           </span>
 
           <span data-testid="match-counter" style={{
@@ -297,155 +446,69 @@ export function QuestionViewer({
           <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
             <button data-testid="prev-match-btn" onClick={onPrevMatch} style={toolbarBtn()} title="Previous">
               <ChevronLeft size={16} />
-              {!isMobile && 'Prev'}
             </button>
             <button data-testid="next-match-btn" onClick={onNextMatch} style={toolbarBtn()} title="Next">
-              {!isMobile && 'Next'}
               <ChevronRight size={16} />
             </button>
           </div>
         </div>
 
-        {/* Row 2: Action buttons */}
         <div style={{
           display: 'flex',
           alignItems: 'center',
-          gap: isMobile ? '5px' : '8px',
-          padding: isMobile ? '4px 12px 10px' : '4px 18px 10px',
-          paddingLeft: isMobile ? '12px' : '18px',
+          gap: '5px',
+          padding: '4px 12px 10px',
         }}>
-          {isMobile ? (
-            <>
-              <button
-                data-testid="viewer-pen-btn"
-                onClick={() => setAnnotationMode(annotationMode === 'pen' ? 'none' : 'pen')}
-                style={toolbarBtn(annotationMode === 'pen' ? 'primary' : 'default')}
-                title="Pen"
-              >
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M12 19l7-7 3 3-7 7-3-3z"></path>
-                  <path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"></path>
-                  <path d="M2 2l7.586 7.586"></path>
-                  <circle cx="11" cy="11" r="2"></circle>
-                </svg>
-              </button>
-              <button
-                data-testid="viewer-eraser-btn"
-                onClick={() => setAnnotationMode(annotationMode === 'eraser' ? 'none' : 'eraser')}
-                style={toolbarBtn(annotationMode === 'eraser' ? 'primary' : 'default')}
-                title="Eraser"
-              >
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M20 20H7L3 16l9-9 9 9-4 4z"></path>
-                  <path d="M6.5 13.5L12 8"></path>
-                </svg>
-              </button>
-              <button data-testid="viewer-undo-btn" onClick={undoLastAnnotation} style={toolbarBtn()} title="Undo">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M3 7v6h6"></path>
-                  <path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"></path>
-                </svg>
-              </button>
-              <button data-testid="viewer-clear-btn" onClick={() => setShowClearConfirm(true)} style={toolbarBtn('danger')} title="Clear all">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="3 6 5 6 21 6"></polyline>
-                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                </svg>
-              </button>
-              <div style={{ marginLeft: 'auto' }}>
-                <button
-                  data-testid="viewer-chat-toggle-btn"
-                  onClick={onToggleChat}
-                  style={toolbarBtn(isChatOpen ? 'danger' : 'primary')}
-                  title={isChatOpen ? 'Close help' : 'Get help'}
-                >
-                  <MessageCircle size={13} />
-                  {isChatOpen ? 'Close' : 'Help'}
-                </button>
-              </div>
-            </>
-          ) : (
-            <>
-              <div ref={pdfMenuRef} style={{ position: 'relative' }}>
-                <button
-                  data-testid="viewer-pdf-menu-btn"
-                  onClick={() => setPdfMenuOpen((prev: boolean) => !prev)}
-                  style={toolbarBtn(viewMode !== 'question' ? 'primary' : 'default')}
-                >
-                  <Eye size={14} />
-                  {viewMode === 'question' ? 'View paper/markscheme' : viewMode === 'paper' ? 'Paper PDF' : 'Markscheme PDF'}
-                  <span style={{ fontSize: '9px' }}>&#9662;</span>
-                </button>
-                {pdfMenuOpen && (
-                  <div
-                    className="animate-fade-in"
-                    style={{
-                      position: 'absolute',
-                      top: 'calc(100% + 4px)',
-                      left: 0,
-                      backgroundColor: 'var(--color-surface)',
-                      borderRadius: 'var(--radius-md)',
-                      boxShadow: 'var(--shadow-lg)',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      minWidth: '200px',
-                      zIndex: 20,
-                      overflow: 'hidden',
-                    }}
-                  >
-                    {[
-                      { label: 'Show question image', mode: 'question' as ViewMode, url: true },
-                      { label: 'View full paper PDF', mode: 'paper' as ViewMode, url: !!paperPdfUrl },
-                      { label: 'View markscheme PDF', mode: 'markscheme' as ViewMode, url: !!markschemePdfUrl },
-                    ].map(({ label, mode, url }, i) => (
-                      <button
-                        key={mode}
-                        data-testid={`viewer-pdf-option-${mode}`}
-                        type="button"
-                        onClick={() => { if (url) { setViewMode(mode); setPdfMenuOpen(false); } }}
-                        disabled={!url}
-                        style={{
-                          padding: '11px 16px',
-                          background: viewMode === mode ? 'var(--color-primary-light)' : 'transparent',
-                          border: 'none',
-                          borderBottom: i < 2 ? '1px solid var(--color-border-light)' : 'none',
-                          fontSize: '13px',
-                          textAlign: 'left',
-                          cursor: url ? 'pointer' : 'not-allowed',
-                          color: url ? 'var(--color-text)' : 'var(--color-text-muted)',
-                          fontWeight: viewMode === mode ? 600 : 400,
-                          fontFamily: 'var(--font-body)',
-                        }}
-                      >
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              <button
-                data-testid="viewer-add-worksheet-btn"
-                onClick={onToggleSelection}
-                style={toolbarBtn(isCurrentSelected ? 'danger' : 'primary')}
-                title={isCurrentSelected ? 'Remove from worksheet' : 'Add to worksheet'}
-              >
-                {isCurrentSelected ? <Minus size={13} /> : <Plus size={13} />}
-                {isCurrentSelected ? 'Remove' : 'Add to worksheet'}
-              </button>
-
-              <button
-                data-testid="viewer-chat-toggle-desktop-btn"
-                onClick={onToggleChat}
-                style={toolbarBtn(isChatOpen ? 'danger' : 'primary')}
-                title={isChatOpen ? 'Close help' : 'Get help'}
-              >
-                <MessageCircle size={13} />
-                {isChatOpen ? 'Close Help' : 'Get Help'}
-              </button>
-            </>
-          )}
+          <button
+            data-testid="viewer-pen-btn"
+            onClick={() => setAnnotationMode(annotationMode === 'pen' ? 'none' : 'pen')}
+            style={toolbarBtn(annotationMode === 'pen' ? 'primary' : 'default')}
+            title="Pen"
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 19l7-7 3 3-7 7-3-3z"></path>
+              <path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"></path>
+              <path d="M2 2l7.586 7.586"></path>
+              <circle cx="11" cy="11" r="2"></circle>
+            </svg>
+          </button>
+          <button
+            data-testid="viewer-eraser-btn"
+            onClick={() => setAnnotationMode(annotationMode === 'eraser' ? 'none' : 'eraser')}
+            style={toolbarBtn(annotationMode === 'eraser' ? 'primary' : 'default')}
+            title="Eraser"
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M20 20H7L3 16l9-9 9 9-4 4z"></path>
+              <path d="M6.5 13.5L12 8"></path>
+            </svg>
+          </button>
+          <button data-testid="viewer-undo-btn" onClick={undoLastAnnotation} style={toolbarBtn()} title="Undo">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M3 7v6h6"></path>
+              <path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"></path>
+            </svg>
+          </button>
+          <button data-testid="viewer-clear-btn" onClick={() => setShowClearConfirm(true)} style={toolbarBtn('danger')} title="Clear all">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="3 6 5 6 21 6"></polyline>
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+            </svg>
+          </button>
+          <div style={{ marginLeft: 'auto' }}>
+            <button
+              data-testid="viewer-chat-toggle-btn"
+              onClick={onToggleChat}
+              style={toolbarBtn(isChatOpen ? 'danger' : 'primary')}
+              title={isChatOpen ? 'Close help' : 'Get help'}
+            >
+              <MessageCircle size={13} />
+              {isChatOpen ? 'Close' : 'Help'}
+            </button>
+          </div>
         </div>
+        </>
+      )}
       </div>
 
       {/* Content area */}
@@ -493,7 +556,7 @@ export function QuestionViewer({
                 <TransformComponent wrapperStyle={{ width: '100%', minHeight: '100%' }} contentStyle={{ width: '100%' }}>
                   <div style={{ position: 'relative', width: '100%', backgroundColor: 'var(--color-surface)' }}>
                     <img
-                      src={assetUrl(`/edexcel-gcse-maths-questions/${currentMatch.labelId}`)}
+                      src={assetUrl(qualification, 'questions', currentMatch.labelId)}
                       alt={currentMatch.labelId}
                       onLoad={handleImageLoad}
                       style={{
@@ -592,7 +655,7 @@ export function QuestionViewer({
                   <TransformComponent wrapperStyle={{ width: '100%', minHeight: '100%' }} contentStyle={{ width: '100%' }}>
                     <div style={{ position: 'relative', width: '100%', backgroundColor: 'var(--color-surface)' }}>
                       <img
-                        src={assetUrl(`/edexcel-gcse-maths-answers/${currentMatch.labelId}`)}
+                        src={assetUrl(qualification, 'answers', currentMatch.labelId)}
                         alt={`Markscheme for ${currentMatch.labelId}`}
                         onLoad={handleImageLoad}
                         style={{
@@ -672,8 +735,8 @@ export function QuestionViewer({
           <ChatBot
             questionId={currentMatch.labelId}
             questionText={currentMatch.text}
-            questionImageUrl={assetUrl(`/edexcel-gcse-maths-questions/${currentMatch.labelId}`)}
-            markschemeImageUrl={assetUrl(`/edexcel-gcse-maths-answers/${currentMatch.labelId}`)}
+            questionImageUrl={assetUrl(qualification, 'questions', currentMatch.labelId)}
+            markschemeImageUrl={assetUrl(qualification, 'answers', currentMatch.labelId)}
             isOpen={true}
             onClose={onToggleChat}
             isInline={true}
@@ -685,8 +748,8 @@ export function QuestionViewer({
         <ChatBot
           questionId={currentMatch.labelId}
           questionText={currentMatch.text}
-          questionImageUrl={assetUrl(`/edexcel-gcse-maths-questions/${currentMatch.labelId}`)}
-          markschemeImageUrl={assetUrl(`/edexcel-gcse-maths-answers/${currentMatch.labelId}`)}
+          questionImageUrl={assetUrl(qualification, 'questions', currentMatch.labelId)}
+          markschemeImageUrl={assetUrl(qualification, 'answers', currentMatch.labelId)}
           isOpen={isChatOpen}
           onClose={onToggleChat}
           isInline={false}

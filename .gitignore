@@ -33,3 +33,15 @@ public/edexcel-gcse-maths-papers/
 public/edexcel-gcse-maths-markschemes/
 public/edexcel-gcse-maths-questions/
 public/edexcel-gcse-maths-answers/
+
+# Local-only large asset mirrors (not source)
+liveqs-gcse/
+liveqs-alevel/
+liveas-gcse/
+liveas-alevel/
+
+# Design references (visual handoff, not shipped code)
+design_handoff_question_page/
+
+# Pair-check checkpoint output
+pair-checks.json

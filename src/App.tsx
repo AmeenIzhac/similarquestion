@@ -1,13 +1,22 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
-import { Sidebar, SearchBar, FilterModal, LoadingOverlay, QuestionViewer } from './components';
+import { Sidebar, SearchBar, FilterModal, LoadingOverlay, QuestionViewer, TutorDock } from './components';
 import { useAnnotations } from './hooks/useAnnotations';
 import { useSearch } from './hooks/useSearch';
-import { Menu } from 'lucide-react';
-import type { LevelFilter, CalculatorFilter, ViewMode } from './types/index';
+import { Menu, Eye, EyeOff, Check } from 'lucide-react';
+import type { LevelFilter, CalculatorFilter, Qualification, ViewMode } from './types/index';
 import { getDocumentBaseFromLabel } from './utils/formatters';
 import { assetUrl } from './utils/assets';
 
+const QUALIFICATION_STORAGE_KEY = 'qualification';
+
+function readStoredQualification(): Qualification {
+  if (typeof window === 'undefined') return 'gcse';
+  const v = window.localStorage.getItem(QUALIFICATION_STORAGE_KEY);
+  return v === 'alevel' ? 'alevel' : 'gcse';
+}
+
 function App() {
+  const [qualification, setQualification] = useState<Qualification>(readStoredQualification);
   const [levelFilter, setLevelFilter] = useState<LevelFilter>('all');
   const [calculatorFilter, setCalculatorFilter] = useState<CalculatorFilter>('all');
   const [numMatches, setNumMatches] = useState<number>(25);
@@ -23,6 +32,7 @@ function App() {
   });
   const [isChatOpen, setIsChatOpen] = useState<boolean>(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
+  const [tutorOpen, setTutorOpen] = useState<boolean>(false);
 
   const {
     isProcessing,
@@ -34,7 +44,7 @@ function App() {
     nextMatch,
     prevMatch,
     searchByText
-  } = useSearch({ levelFilter, calculatorFilter, numMatches });
+  } = useSearch({ levelFilter, calculatorFilter, numMatches, qualification });
 
   const {
     annotationMode,
@@ -63,6 +73,19 @@ function App() {
     viewMode,
     showMarkscheme
   });
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(QUALIFICATION_STORAGE_KEY, qualification);
+    }
+    setLevelFilter('all');
+    setCalculatorFilter('all');
+    setSelectedQuestions([]);
+    if (hasStarted && searchText.trim()) {
+      searchByText(searchText);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [qualification]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -123,14 +146,15 @@ function App() {
   }, [hasStarted, searchText, searchByText]);
 
   const documentBase = useMemo(() => currentMatch ? getDocumentBaseFromLabel(currentMatch.labelId) : null, [currentMatch?.labelId]);
-  const paperPdfUrl = documentBase ? assetUrl(`/edexcel-gcse-maths-papers/${documentBase}.pdf`) : null;
-  const markschemePdfUrl = documentBase ? assetUrl(`/edexcel-gcse-maths-markschemes/${documentBase}.pdf`) : null;
+  const paperPdfUrl = documentBase ? assetUrl(qualification, 'papers', `${documentBase}.pdf`) : null;
+  const markschemePdfUrl = documentBase ? assetUrl(qualification, 'markschemes', `${documentBase}.pdf`) : null;
 
   const isLanding = !hasStarted && !isProcessing && (!currentMatch || currentMatch.labelId === 'error');
 
   return (
-    <div data-testid="app-root" style={{ display: 'flex', height: '100dvh', overflow: 'hidden', backgroundColor: 'var(--color-bg)', padding: isMobile ? '0' : '0' }}>
+    <div data-testid="app-root" style={{ display: 'flex', height: '100dvh', overflow: 'hidden', backgroundColor: 'var(--color-surface-alt)', padding: isMobile ? '0' : '0' }}>
       <Sidebar
+        qualification={qualification}
         isMobile={isMobile}
         annotationMode={annotationMode}
         setAnnotationMode={setAnnotationMode}
@@ -158,7 +182,7 @@ function App() {
         display: 'flex',
         flexDirection: 'column',
         overflow: 'hidden',
-        margin: isMobile ? '0' : '8px 8px 8px 0',
+        margin: isMobile ? '0' : '8px',
         borderRadius: isMobile ? '0' : 'var(--radius-lg)',
         backgroundColor: 'var(--color-surface)',
         boxShadow: isMobile ? 'none' : 'var(--shadow-md)',
@@ -203,19 +227,61 @@ function App() {
               alignItems: 'center',
               justifyContent: 'center',
               position: 'relative',
-              backgroundImage: 'url(https://static.prod-images.emergentagent.com/jobs/a4ffc6e3-906d-4567-9188-ce517a662ad7/images/a5390a53ddc570b746500516f862346ae0f15f05b395aece0b8fae2c2cf4cb3c.png)',
-              backgroundSize: 'cover',
-              backgroundPosition: 'center',
+              overflow: 'hidden',
+              backgroundColor: '#FAFAF6',
             }}
           >
-            {/* Overlay */}
-            <div style={{
-              position: 'absolute',
-              inset: 0,
-              backgroundColor: 'rgba(255, 255, 255, 0.55)',
-              backdropFilter: 'blur(2px)',
-              WebkitBackdropFilter: 'blur(2px)',
-            }} />
+            {/* Math glyphs */}
+            <div
+              aria-hidden
+              style={{
+                position: 'absolute',
+                inset: 0,
+                userSelect: 'none',
+                pointerEvents: 'none',
+              }}
+            >
+              {[
+                { char: '∫', left: 12, top: 18, size: 90, rotation: -8 },
+                { char: 'π', left: 78, top: 12, size: 70, rotation: 6 },
+                { char: 'Σ', left: 8,  top: 72, size: 80, rotation: 4 },
+                { char: '√', left: 82, top: 70, size: 75, rotation: -5 },
+                { char: 'ƒ', left: 50, top: 8,  size: 55, rotation: 0 },
+                { char: 'θ', left: 22, top: 45, size: 50, rotation: 8 },
+                { char: '≈', left: 72, top: 42, size: 55, rotation: -3 },
+                { char: '∞', left: 45, top: 82, size: 60, rotation: 2 },
+                { char: 'Δ', left: 90, top: 30, size: 45, rotation: 0 },
+                { char: 'λ', left: 32, top: 28, size: 45, rotation: -6 },
+              ].map((g, i) => (
+                <span
+                  key={i}
+                  style={{
+                    position: 'absolute',
+                    left: `${g.left}%`,
+                    top: `${g.top}%`,
+                    fontSize: `${g.size}px`,
+                    fontFamily: '"Times New Roman", serif',
+                    color: 'rgba(0, 0, 0, 0.045)',
+                    transform: `translate(-50%, -50%) rotate(${g.rotation}deg)`,
+                    lineHeight: 1,
+                  }}
+                >
+                  {g.char}
+                </span>
+              ))}
+            </div>
+
+            {/* Vignette — fades glyphs around the centered content */}
+            <div
+              aria-hidden
+              style={{
+                position: 'absolute',
+                inset: 0,
+                pointerEvents: 'none',
+                background:
+                  'radial-gradient(ellipse 55% 45% at center, rgba(250, 250, 246, 0.92) 0%, transparent 100%)',
+              }}
+            />
 
             <div style={{
               width: '100%',
@@ -243,8 +309,46 @@ function App() {
                   color: 'var(--color-text-secondary)',
                   lineHeight: 1.5,
                 }}>
-                  Upload an image or type a description to find similar GCSE questions
+                  Upload an image or type a description to find similar questions
                 </p>
+              </div>
+              <div
+                data-testid="qualification-tabs"
+                style={{
+                  display: 'flex',
+                  justifyContent: 'center',
+                  gap: '32px',
+                  marginBottom: '20px',
+                }}
+              >
+                {([
+                  { value: 'gcse', label: 'GCSE' },
+                  { value: 'alevel', label: 'A-level' },
+                ] as const).map((tab) => {
+                  const active = qualification === tab.value;
+                  return (
+                    <button
+                      key={tab.value}
+                      data-testid={`qualification-tab-${tab.value}`}
+                      type="button"
+                      onClick={() => setQualification(tab.value)}
+                      style={{
+                        background: 'transparent',
+                        border: 'none',
+                        padding: '8px 4px',
+                        cursor: 'pointer',
+                        fontSize: '15px',
+                        fontWeight: active ? 700 : 500,
+                        color: active ? '#111' : '#9A9A9A',
+                        fontFamily: 'var(--font-body)',
+                        borderBottom: active ? '2px solid #111' : '2px solid transparent',
+                        transition: 'color var(--transition-fast), border-color var(--transition-fast)',
+                      }}
+                    >
+                      {tab.label}
+                    </button>
+                  );
+                })}
               </div>
               <SearchBar
                 searchText={searchText}
@@ -252,6 +356,7 @@ function App() {
                 onSearch={handleTextSearch}
                 isProcessing={isProcessing}
                 isMobile={isMobile}
+                autoGrow
               />
             </div>
             <div style={{
@@ -273,11 +378,11 @@ function App() {
         {/* Question viewer */}
         {currentMatch && !isProcessing && currentMatch.labelId !== 'error' && (
           <QuestionViewer
+            qualification={qualification}
             currentMatch={currentMatch}
             currentMatchIndex={currentMatchIndex}
             totalMatches={topMatches.length}
             viewMode={viewMode}
-            setViewMode={setViewMode}
             showMarkscheme={showMarkscheme}
             annotationMode={annotationMode}
             textInputPos={textInputPos}
@@ -307,6 +412,7 @@ function App() {
             setAnnotationMode={setAnnotationMode}
             clearAnnotations={clearAnnotations}
             undoLastAnnotation={undoLastAnnotation}
+            onToggleTutor={() => setTutorOpen((prev) => !prev)}
           />
         )}
 
@@ -332,8 +438,8 @@ function App() {
         {/* Loading overlay */}
         {isProcessing && <LoadingOverlay />}
 
-        {/* Bottom search bar */}
-        {hasStarted && !isProcessing && (
+        {/* Bottom search bar (mobile + error state only — desktop question view uses the bottom dock below) */}
+        {hasStarted && !isProcessing && (isMobile || !currentMatch || currentMatch.labelId === 'error') && (
           <div style={{
             position: 'absolute',
             bottom: 0,
@@ -349,7 +455,7 @@ function App() {
               margin: '0 auto',
               padding: isMobile ? '0 12px' : '0 24px',
               display: 'flex',
-              alignItems: 'center',
+              alignItems: 'flex-end',
               gap: '10px',
             }}>
               {viewMode === 'question' && currentMatch && currentMatch.labelId !== 'error' && (
@@ -358,7 +464,8 @@ function App() {
                   type="button"
                   onClick={() => setShowMarkscheme((prev) => !prev)}
                   style={{
-                    padding: '10px 18px',
+                    padding: '0 18px',
+                    height: isMobile ? '52px' : '56px',
                     backgroundColor: 'var(--color-primary)',
                     color: '#fff',
                     border: 'none',
@@ -380,7 +487,100 @@ function App() {
                 onSearch={handleTextSearch}
                 isProcessing={isProcessing}
                 isMobile={isMobile}
+                autoGrow
               />
+            </div>
+          </div>
+        )}
+
+        {/* Bottom dock (desktop question view only) */}
+        {!isMobile && hasStarted && !isProcessing && currentMatch && currentMatch.labelId !== 'error' && (
+          <div
+            data-testid="question-bottom-dock"
+            style={{
+              position: 'absolute',
+              bottom: 0,
+              left: 0,
+              right: 0,
+              height: '80px',
+              padding: '0 32px 14px 32px',
+              background: 'rgba(255,255,255,0.9)',
+              backdropFilter: 'blur(8px)',
+              WebkitBackdropFilter: 'blur(8px)',
+              borderTop: '1px solid rgba(0,0,0,0.05)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '24px',
+              boxSizing: 'border-box',
+              zIndex: 5,
+            }}
+          >
+            {/* Left: Find similar questions input (SearchBar so paperclip/OCR is kept) */}
+            <div style={{ flex: '1 1 480px', maxWidth: '480px', display: 'flex', minWidth: 0 }}>
+              <SearchBar
+                searchText={searchText}
+                setSearchText={setSearchText}
+                onSearch={handleTextSearch}
+                isProcessing={isProcessing}
+                isMobile={isMobile}
+                placeholder="Find similar questions…"
+              />
+            </div>
+
+            {/* Right cluster */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+              <button
+                data-testid="dock-view-paper-btn"
+                type="button"
+                onClick={() => setViewMode(viewMode === 'paper' ? 'question' : 'paper')}
+                disabled={!paperPdfUrl}
+                style={{
+                  height: '36px',
+                  padding: '0 14px',
+                  background: 'transparent',
+                  color: paperPdfUrl ? '#5A5A5A' : '#C0C0C0',
+                  border: 'none',
+                  borderRadius: '999px',
+                  fontSize: '13px',
+                  fontWeight: 500,
+                  cursor: paperPdfUrl ? 'pointer' : 'not-allowed',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  fontFamily: 'var(--font-body)',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {viewMode === 'paper' ? <EyeOff size={14} /> : <Eye size={14} />}
+                {viewMode === 'paper' ? 'Hide paper' : 'View paper'}
+              </button>
+
+              <button
+                data-testid="dock-check-markscheme-btn"
+                type="button"
+                onClick={() => setShowMarkscheme((prev) => !prev)}
+                style={{
+                  marginLeft: '4px',
+                  height: '44px',
+                  padding: '0 24px',
+                  background: '#111',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '999px',
+                  fontSize: '14px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  fontFamily: 'var(--font-body)',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                <Check size={16} />
+                {showMarkscheme ? 'Hide markscheme' : 'Check markscheme'}
+              </button>
             </div>
           </div>
         )}
@@ -388,6 +588,7 @@ function App() {
         {/* Filter modal */}
         {showCenterFilter && (
           <FilterModal
+            qualification={qualification}
             levelFilter={levelFilter}
             setLevelFilter={setLevelFilter}
             calculatorFilter={calculatorFilter}
@@ -399,6 +600,16 @@ function App() {
           />
         )}
       </div>
+
+      {!isMobile && hasStarted && !isProcessing && currentMatch && currentMatch.labelId !== 'error' && (
+        <TutorDock
+          open={tutorOpen}
+          onClose={() => setTutorOpen(false)}
+          questionId={currentMatch.labelId}
+          questionImageUrl={assetUrl(qualification, 'questions', currentMatch.labelId)}
+          markschemeImageUrl={assetUrl(qualification, 'answers', currentMatch.labelId)}
+        />
+      )}
     </div>
   );
 }

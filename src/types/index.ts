@@ -24,7 +24,8 @@ export interface FormStatus {
   message: string;
 }
 
-export type LevelFilter = 'all' | 'h' | 'f';
+export type Qualification = 'gcse' | 'alevel';
+export type LevelFilter = 'all' | 'h' | 'f' | 'a' | 'as';
 export type CalculatorFilter = 'all' | 'calculator' | 'non-calculator';
 
 export type ViewMode = 'question' | 'paper' | 'markscheme';

@@ -1,6 +1,7 @@
-import type { LevelFilter, CalculatorFilter } from '../types/index';
+import type { LevelFilter, CalculatorFilter, Qualification } from '../types/index';
 
 interface FilterModalProps {
+  qualification: Qualification;
   levelFilter: LevelFilter;
   setLevelFilter: (filter: LevelFilter) => void;
   calculatorFilter: CalculatorFilter;
@@ -12,6 +13,7 @@ interface FilterModalProps {
 }
 
 export function FilterModal({
+  qualification,
   levelFilter,
   setLevelFilter,
   calculatorFilter,
@@ -96,19 +98,30 @@ export function FilterModal({
             <label style={{ fontSize: '13px', color: 'var(--color-text-secondary)', fontWeight: 500 }}>Level</label>
             <select data-testid="filter-level-select" value={levelFilter} onChange={(e) => setLevelFilter(e.target.value as LevelFilter)} style={selectStyle}>
               <option value="all">All levels</option>
-              <option value="h">Higher (H)</option>
-              <option value="f">Foundation (F)</option>
+              {qualification === 'gcse' ? (
+                <>
+                  <option value="h">Higher (H)</option>
+                  <option value="f">Foundation (F)</option>
+                </>
+              ) : (
+                <>
+                  <option value="a">A-Level (A)</option>
+                  <option value="as">AS-Level (AS)</option>
+                </>
+              )}
             </select>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            <label style={{ fontSize: '13px', color: 'var(--color-text-secondary)', fontWeight: 500 }}>Calculator</label>
-            <select data-testid="filter-calculator-select" value={calculatorFilter} onChange={(e) => setCalculatorFilter(e.target.value as CalculatorFilter)} style={selectStyle}>
-              <option value="all">All papers</option>
-              <option value="non-calculator">Non-Calculator (Paper 1)</option>
-              <option value="calculator">Calculator (Papers 2 &amp; 3)</option>
-            </select>
-          </div>
+          {qualification === 'gcse' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <label style={{ fontSize: '13px', color: 'var(--color-text-secondary)', fontWeight: 500 }}>Calculator</label>
+              <select data-testid="filter-calculator-select" value={calculatorFilter} onChange={(e) => setCalculatorFilter(e.target.value as CalculatorFilter)} style={selectStyle}>
+                <option value="all">All papers</option>
+                <option value="non-calculator">Non-Calculator (Paper 1)</option>
+                <option value="calculator">Calculator (Papers 2 &amp; 3)</option>
+              </select>
+            </div>
+          )}
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             <label style={{ fontSize: '13px', color: 'var(--color-text-secondary)', fontWeight: 500 }}>Number of Matches (max 50)</label>
