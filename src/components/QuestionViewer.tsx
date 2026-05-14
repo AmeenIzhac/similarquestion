@@ -533,11 +533,12 @@ export function QuestionViewer({
                 paddingBottom: (isMobile && isChatOpen) ? '10px' : '150px',
                 position: 'relative',
                 backgroundColor: 'var(--color-surface-alt)',
+                touchAction: isMobile && annotationMode === 'none' ? 'pan-y pinch-zoom' : undefined,
               }}
             >
               <TransformWrapper
-                minScale={qMinScale}
-                maxScale={1}
+                minScale={isMobile ? 1 : qMinScale}
+                maxScale={isMobile ? 4 : 1}
                 initialScale={1}
                 centerZoomedOut={true}
                 customTransform={(x, y, scale) => {
@@ -632,11 +633,12 @@ export function QuestionViewer({
                   position: 'relative',
                   backgroundColor: 'var(--color-bg)',
                   borderTop: '1px solid var(--color-border)',
+                  touchAction: isMobile && annotationMode === 'none' ? 'pan-y pinch-zoom' : undefined,
                 }}
               >
                 <TransformWrapper
-                  minScale={mMinScale}
-                  maxScale={1}
+                  minScale={isMobile ? 1 : mMinScale}
+                  maxScale={isMobile ? 4 : 1}
                   initialScale={1}
                   centerZoomedOut={true}
                   customTransform={(x, y, scale) => {
