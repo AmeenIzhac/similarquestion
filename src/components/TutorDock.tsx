@@ -3,7 +3,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
-import { Lightbulb, X, ArrowUp } from 'lucide-react';
+import { ArrowUp, Lightbulb, RotateCcw, X } from 'lucide-react';
 import { useTutorChat } from '../hooks/useTutorChat';
 
 interface TutorDockProps {
@@ -85,6 +85,7 @@ export function TutorDock({ open, onClose, questionId, questionImageUrl, marksch
     sendMessage,
     handleQuickAction,
     handleNextStep,
+    resetTutor,
   } = useTutorChat(questionId, questionImageUrl, markschemeImageUrl);
 
   useEffect(() => {
@@ -103,6 +104,12 @@ export function TutorDock({ open, onClose, questionId, questionImageUrl, marksch
   };
 
   const showQuickHelp = messages.length === 0;
+  const canResetTutor = messages.length > 0 || Boolean(streamingContent) || hasMoreSteps;
+
+  const handleResetTutor = () => {
+    resetTutor();
+    setDraft('');
+  };
 
   return (
     <aside
@@ -149,26 +156,51 @@ export function TutorDock({ open, onClose, questionId, questionImageUrl, marksch
           </div>
           <span style={{ fontSize: '14px', fontWeight: 600, color: '#111' }}>Tutor</span>
         </div>
-        <button
-          data-testid="tutor-close-btn"
-          type="button"
-          onClick={onClose}
-          aria-label="Close tutor"
-          style={{
-            width: '28px',
-            height: '28px',
-            background: 'transparent',
-            border: 'none',
-            color: '#9A9A9A',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            borderRadius: '50%',
-          }}
-        >
-          <X size={16} />
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          {canResetTutor && (
+            <button
+              data-testid="tutor-reset-btn"
+              type="button"
+              onClick={handleResetTutor}
+              aria-label="Reset tutor"
+              title="Reset tutor"
+              style={{
+                width: '28px',
+                height: '28px',
+                background: 'transparent',
+                border: 'none',
+                color: '#9A9A9A',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderRadius: '50%',
+              }}
+            >
+              <RotateCcw size={15} />
+            </button>
+          )}
+          <button
+            data-testid="tutor-close-btn"
+            type="button"
+            onClick={onClose}
+            aria-label="Close tutor"
+            style={{
+              width: '28px',
+              height: '28px',
+              background: 'transparent',
+              border: 'none',
+              color: '#9A9A9A',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderRadius: '50%',
+            }}
+          >
+            <X size={16} />
+          </button>
+        </div>
       </header>
 
       <div

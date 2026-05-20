@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 
 export interface TutorMessage {
   role: 'user' | 'assistant';
@@ -68,13 +68,23 @@ export function useTutorChat(
   const [currentStep, setCurrentStep] = useState(0);
   const [imageBase64, setImageBase64] = useState<string | null>(null);
   const [markschemeBase64, setMarkschemeBase64] = useState<string | null>(null);
+  const requestIdRef = useRef(0);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
-  useEffect(() => {
+  const resetTutor = useCallback(() => {
+    requestIdRef.current += 1;
+    abortControllerRef.current?.abort();
+    abortControllerRef.current = null;
     setMessages([]);
+    setIsLoading(false);
     setStreamingContent('');
     setPregeneratedSteps([]);
     setCurrentStep(0);
-  }, [questionId]);
+  }, []);
+
+  useEffect(() => {
+    resetTutor();
+  }, [questionId, resetTutor]);
 
   useEffect(() => {
     if (!questionImageUrl) { setImageBase64(null); return; }
@@ -96,6 +106,11 @@ export function useTutorChat(
     setMessages((prev) => [...prev, { role: 'user', content: userMessage }]);
     setIsLoading(true);
     setStreamingContent('');
+    const requestId = requestIdRef.current + 1;
+    requestIdRef.current = requestId;
+    abortControllerRef.current?.abort();
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
 
     try {
       const apiMessages: any[] = [
@@ -119,6 +134,7 @@ export function useTutorChat(
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ messages: apiMessages, model: 'gpt-4o-mini', max_tokens: 400 }),
+        signal: controller.signal,
       });
       if (!response.ok) throw new Error(`API ${response.status}`);
 
@@ -138,12 +154,16 @@ export function useTutorChat(
               try {
                 const parsed = JSON.parse(data);
                 fullContent += parsed.content || '';
-                setStreamingContent(fullContent);
+                if (requestIdRef.current === requestId) {
+                  setStreamingContent(fullContent);
+                }
               } catch { /* skip */ }
             }
           }
         }
       }
+
+      if (requestIdRef.current !== requestId) return;
 
       if (fullContent.includes('[SOLUTION COMPLETE]')) {
         fullContent = fullContent.replace('[SOLUTION COMPLETE]', '').trim();
@@ -152,10 +172,14 @@ export function useTutorChat(
       setMessages((prev) => [...prev, { role: 'assistant', content: fullContent }]);
       setStreamingContent('');
     } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') return;
       console.error('Tutor error:', error);
       setMessages((prev) => [...prev, { role: 'assistant', content: 'Sorry, I encountered an error.' }]);
     } finally {
-      setIsLoading(false);
+      if (requestIdRef.current === requestId) {
+        setIsLoading(false);
+        abortControllerRef.current = null;
+      }
     }
   }, [isLoading, messages, imageBase64, markschemeBase64]);
 
@@ -214,5 +238,6 @@ export function useTutorChat(
     sendMessage,
     handleQuickAction,
     handleNextStep,
+    resetTutor,
   };
 }

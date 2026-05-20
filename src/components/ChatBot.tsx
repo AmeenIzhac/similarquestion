@@ -466,7 +466,8 @@ Format your response clearly.`;
                     <button
                         data-testid="chatbot-refresh-btn"
                         onClick={handleRefreshChat}
-                        title="Refresh chat"
+                        aria-label="Reset tutor"
+                        title="Reset tutor"
                         style={{
                             background: 'rgba(255, 255, 255, 0.15)',
                             border: 'none',
