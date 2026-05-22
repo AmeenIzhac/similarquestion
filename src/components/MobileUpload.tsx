@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
-import { PhotoCapture } from './PhotoCapture';
+import { CameraCapture } from './CameraCapture';
 
 export function MobileUpload({ sessionId }: { sessionId: string }) {
-  const [status, setStatus] = useState<'idle' | 'invalid' | 'uploading' | 'done' | 'error'>('idle');
+  const [status, setStatus] = useState<'checking' | 'ready' | 'invalid' | 'uploading' | 'done' | 'error'>('checking');
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -14,6 +14,7 @@ export function MobileUpload({ sessionId }: { sessionId: string }) {
         const snap = await getDoc(doc(db, 'markSessions', sessionId));
         if (!alive) return;
         if (!snap.exists()) setStatus('invalid');
+        else setStatus('ready');
       } catch {
         if (alive) setStatus('invalid');
       }
@@ -37,51 +38,71 @@ export function MobileUpload({ sessionId }: { sessionId: string }) {
     }
   };
 
+  if (status === 'invalid') {
+    return (
+      <Overlay>
+        <h2 style={{ fontSize: 18, fontWeight: 700, margin: '0 0 8px' }}>Session expired</h2>
+        <p style={{ fontSize: 14, color: '#6b7280', margin: 0, maxWidth: 320, textAlign: 'center' }}>
+          Go back to your computer and generate a fresh QR code.
+        </p>
+      </Overlay>
+    );
+  }
+
+  if (status === 'done') {
+    return (
+      <Overlay>
+        <div style={{
+          width: 64, height: 64, borderRadius: '50%',
+          background: '#ECFDF5', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          marginBottom: 12,
+        }}>
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
+        </div>
+        <h2 style={{ fontSize: 18, fontWeight: 700, margin: '0 0 6px' }}>Sent</h2>
+        <p style={{ fontSize: 14, color: '#6b7280', margin: 0, maxWidth: 320, textAlign: 'center' }}>
+          Look at your computer — the AI is marking your work now.
+        </p>
+      </Overlay>
+    );
+  }
+
+  return (
+    <>
+      <CameraCapture
+        onSubmit={handleSubmit}
+        submitLabel="Send"
+        submittingLabel="Sending…"
+        isSubmitting={status === 'uploading'}
+      />
+      {error && (
+        <div style={{
+          position: 'fixed', top: 12, left: 12, right: 12,
+          padding: '10px 14px', background: '#FEE2E2', color: '#991B1B',
+          borderRadius: 10, fontSize: 13, zIndex: 1000,
+          fontFamily: 'system-ui, -apple-system, sans-serif',
+        }}>
+          {error}
+        </div>
+      )}
+    </>
+  );
+}
+
+function Overlay({ children }: { children: React.ReactNode }) {
   return (
     <div style={{
-      minHeight: '100dvh',
-      background: '#f8fafc',
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      padding: '24px 18px',
+      position: 'fixed', inset: 0,
+      background: '#fff',
+      display: 'flex', flexDirection: 'column',
+      alignItems: 'center', justifyContent: 'center',
+      padding: 24, textAlign: 'center',
       fontFamily: 'system-ui, -apple-system, sans-serif',
       color: '#111',
     }}>
-      <div style={{ maxWidth: '480px', width: '100%' }}>
-        <h1 style={{ fontSize: '22px', fontWeight: 700, margin: '8px 0 4px' }}>Snap your work</h1>
-        <p style={{ fontSize: '14px', color: '#6b7280', margin: '0 0 20px' }}>
-          Take one or more photos of your written answer. Tap "Send" when you're ready — they'll appear on your computer for AI marking.
-        </p>
-
-        {status === 'invalid' && (
-          <div style={{ padding: '14px', background: '#FEF3C7', borderRadius: '10px', color: '#92400E', fontSize: '14px' }}>
-            This session has expired or doesn't exist. Go back to your computer and generate a fresh QR code.
-          </div>
-        )}
-
-        {status !== 'invalid' && status !== 'done' && (
-          <PhotoCapture
-            autoOpen
-            onSubmit={handleSubmit}
-            submitLabel="Send"
-            submittingLabel="Sending to your computer…"
-            isSubmitting={status === 'uploading'}
-          />
-        )}
-
-        {status === 'done' && (
-          <div style={{ marginTop: '20px', padding: '16px', background: '#ECFDF5', borderRadius: '10px', color: '#065F46', fontSize: '14px', textAlign: 'center' }}>
-            ✓ Sent! Look at your computer — the AI is marking your work now.
-          </div>
-        )}
-
-        {error && (
-          <div style={{ marginTop: '16px', padding: '12px 14px', background: '#FEE2E2', color: '#991B1B', borderRadius: '8px', fontSize: '13px' }}>
-            {error}
-          </div>
-        )}
-      </div>
+      {children}
     </div>
   );
 }
