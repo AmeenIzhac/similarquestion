@@ -62,6 +62,7 @@ export function MobileUpload({ sessionId }: { sessionId: string }) {
 
         {status !== 'invalid' && status !== 'done' && (
           <PhotoCapture
+            autoOpen
             onSubmit={handleSubmit}
             submitLabel="Send"
             submittingLabel="Sending to your computer…"

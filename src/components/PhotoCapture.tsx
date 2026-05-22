@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 const MAX_PHOTOS = 6;
 
@@ -44,6 +44,9 @@ export interface PhotoCaptureProps {
   // If true, use a compact light-on-light layout (for inline desktop modal use).
   // If false, full-screen-style layout (for the dedicated mobile-upload page).
   compact?: boolean;
+  // If true, fire the camera picker as soon as the component mounts (mobile-upload page).
+  // Note: iOS may require a tap if the navigation gesture has already expired.
+  autoOpen?: boolean;
 }
 
 export function PhotoCapture({
@@ -54,11 +57,22 @@ export function PhotoCapture({
   isSubmitting = false,
   helperText,
   compact = false,
+  autoOpen = false,
 }: PhotoCaptureProps) {
   const [photos, setPhotos] = useState<string[]>([]);
   const [adding, setAdding] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
+
+  // Auto-open the camera when used on the dedicated mobile-upload page —
+  // user scanned a QR to land here, so trigger the picker without an extra tap.
+  useEffect(() => {
+    if (!autoOpen) return;
+    // Small delay so the DOM is fully mounted and the user-activation token
+    // from the navigation tap is most likely to still be considered active.
+    const id = window.setTimeout(() => { inputRef.current?.click(); }, 80);
+    return () => window.clearTimeout(id);
+  }, [autoOpen]);
 
   const addPhoto = async (file: File) => {
     if (photos.length >= MAX_PHOTOS) {
