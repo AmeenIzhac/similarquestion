@@ -1,0 +1,18 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Mark-with-AI phone-camera handoff sessions.
+    // IDs are unguessable UUIDs; we cap document size (image stored as base64 data URL).
+    // Any client may create/read/update a session — the security model is that
+    // only the desktop that generated the ID and the phone that scanned the QR
+    // ever learn the ID. We expire reads/writes after 10 minutes.
+    match /markSessions/{sessionId} {
+      allow read: if request.time < resource.data.expiresAt;
+      allow create: if request.resource.data.expiresAt is timestamp
+                    && request.resource.data.expiresAt > request.time
+                    && request.resource.data.expiresAt < request.time + duration.value(15, 'm');
+      allow update: if request.time < resource.data.expiresAt
+                    && request.resource.data.expiresAt == resource.data.expiresAt;
+    }
+  }
+}

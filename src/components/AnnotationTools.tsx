@@ -6,13 +6,15 @@ interface AnnotationToolsProps {
   setAnnotationMode: (mode: AnnotationMode) => void;
   clearAnnotations: () => void;
   undoLastAnnotation: () => void;
+  redoLastAnnotation: () => void;
 }
 
 export function AnnotationTools({
   annotationMode,
   setAnnotationMode,
   clearAnnotations,
-  undoLastAnnotation
+  undoLastAnnotation,
+  redoLastAnnotation
 }: AnnotationToolsProps) {
   const [showClearConfirm, setShowClearConfirm] = useState(false);
 
@@ -80,6 +82,18 @@ export function AnnotationTools({
             <path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"></path>
           </svg>
           Undo
+        </button>
+        <button
+          data-testid="annotation-redo-btn"
+          onClick={redoLastAnnotation}
+          style={buttonStyle(false)}
+          title="Redo last undone annotation (Ctrl+Y)"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 7v6h-6"></path>
+            <path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3L21 13"></path>
+          </svg>
+          Redo
         </button>
         <button
           data-testid="annotation-clear-btn"

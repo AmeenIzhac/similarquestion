@@ -12,8 +12,10 @@ interface SidebarProps {
   setAnnotationMode: (mode: AnnotationMode) => void;
   clearAnnotations: () => void;
   undoLastAnnotation: () => void;
+  redoLastAnnotation: () => void;
   selectedQuestions: string[];
   removeSelectedQuestion: (labelId: string) => void;
+  reorderSelectedQuestions: (next: string[]) => void;
   onOpenFilters: () => void;
   topMatches?: Match[];
   mobileOpen: boolean;
@@ -33,8 +35,10 @@ export function Sidebar({
   setAnnotationMode,
   clearAnnotations,
   undoLastAnnotation,
+  redoLastAnnotation,
   selectedQuestions,
   removeSelectedQuestion,
+  reorderSelectedQuestions,
   onOpenFilters,
   topMatches,
   mobileOpen,
@@ -198,6 +202,7 @@ export function Sidebar({
           setAnnotationMode={setAnnotationMode}
           clearAnnotations={clearAnnotations}
           undoLastAnnotation={undoLastAnnotation}
+          redoLastAnnotation={redoLastAnnotation}
         />
 
         <button
@@ -241,6 +246,7 @@ export function Sidebar({
             qualification={qualification}
             selectedQuestions={selectedQuestions}
             removeSelectedQuestion={removeSelectedQuestion}
+            reorderSelectedQuestions={reorderSelectedQuestions}
             onHide={() => setShowWorksheet(false)}
           />
         )}

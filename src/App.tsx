@@ -1,11 +1,14 @@
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { Sidebar, SearchBar, FilterModal, LoadingOverlay, QuestionViewer, TutorDock } from './components';
+import { PhotoCapture } from './components/PhotoCapture';
 import { useAnnotations } from './hooks/useAnnotations';
 import { useSearch } from './hooks/useSearch';
 import { Menu, Eye, EyeOff, Check } from 'lucide-react';
 import type { LevelFilter, CalculatorFilter, Qualification, ViewMode } from './types/index';
 import { getDocumentBaseFromLabel } from './utils/formatters';
 import { assetUrl } from './utils/assets';
+import { callMarkWithAI, exportPenWork, type MarkResult } from './utils/markWithAI';
+import { createMarkSession } from './utils/markSession';
 
 const QUALIFICATION_STORAGE_KEY = 'qualification';
 
@@ -33,6 +36,18 @@ function App() {
   const [isChatOpen, setIsChatOpen] = useState<boolean>(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
   const [tutorOpen, setTutorOpen] = useState<boolean>(false);
+  const [markAIMenuOpen, setMarkAIMenuOpen] = useState<boolean>(false);
+  const [markAIMode, setMarkAIMode] = useState<null | 'pen' | 'upload' | 'qr'>(null);
+  const [uploadedMarkImages, setUploadedMarkImages] = useState<string[]>([]);
+  const [markLoading, setMarkLoading] = useState<boolean>(false);
+  const [markResult, setMarkResult] = useState<MarkResult | null>(null);
+  const [markError, setMarkError] = useState<string | null>(null);
+  const [submittedWork, setSubmittedWork] = useState<string[]>([]);
+  const [qrSessionUrl, setQrSessionUrl] = useState<string | null>(null);
+  const [qrWaiting, setQrWaiting] = useState<boolean>(false);
+  const qrUnsubRef = useRef<(() => void) | null>(null);
+  const uploadInputRef = useRef<HTMLInputElement | null>(null);
+  const markMenuRef = useRef<HTMLDivElement | null>(null);
 
   const {
     isProcessing,
@@ -67,6 +82,7 @@ function App() {
     clearAnnotations,
     resizeCanvases,
     undoLastAnnotation,
+    redoLastAnnotation,
     handleEraserClick
   } = useAnnotations({
     currentLabelId: currentMatch?.labelId,
@@ -110,6 +126,144 @@ function App() {
     }
   }, [viewMode]);
 
+  const closeMarkAI = useCallback(() => {
+    setMarkAIMode(null);
+    setUploadedMarkImages([]);
+    setMarkResult(null);
+    setMarkError(null);
+    setMarkLoading(false);
+    setSubmittedWork([]);
+    qrUnsubRef.current?.();
+    qrUnsubRef.current = null;
+    setQrSessionUrl(null);
+    setQrWaiting(false);
+  }, []);
+
+  const runMark = useCallback(async (workImages: string[]) => {
+    if (!currentMatch || currentMatch.labelId === 'error') return;
+    setMarkLoading(true);
+    setMarkError(null);
+    setMarkResult(null);
+    setSubmittedWork(workImages);
+    try {
+      const result = await callMarkWithAI({
+        questionImageUrl: assetUrl(qualification, 'questions', currentMatch.labelId),
+        markschemeImageUrl: assetUrl(qualification, 'answers', currentMatch.labelId),
+        workImages,
+        qualification: qualification === 'alevel' ? 'A-Level' : 'GCSE',
+      });
+      setMarkResult(result);
+    } catch (e: any) {
+      setMarkError(e?.message || 'Marking failed');
+    } finally {
+      setMarkLoading(false);
+    }
+  }, [currentMatch, qualification]);
+
+  const handleMarkPen = useCallback(async () => {
+    if (!currentMatch || currentMatch.labelId === 'error') return;
+    const canvas = questionCanvasRef.current;
+    if (!canvas) {
+      setMarkError('No pen canvas available — try drawing something first.');
+      return;
+    }
+    try {
+      const work = exportPenWork(canvas);
+      await runMark([work]);
+    } catch (e: any) {
+      setMarkError(e?.message || 'Failed to capture your pen work');
+      setMarkLoading(false);
+    }
+  }, [currentMatch, questionCanvasRef, runMark]);
+
+  const startQrSession = useCallback(async () => {
+    setMarkError(null);
+    setQrSessionUrl(null);
+    setQrWaiting(true);
+    try {
+      const session = await createMarkSession((workImages) => {
+        setQrWaiting(false);
+        runMark(workImages);
+      });
+      qrUnsubRef.current?.();
+      qrUnsubRef.current = session.unsubscribe;
+      setQrSessionUrl(session.url);
+    } catch (e: any) {
+      setQrWaiting(false);
+      setMarkError(e?.message || 'Could not start phone-camera session');
+    }
+  }, [runMark]);
+
+  useEffect(() => () => { qrUnsubRef.current?.(); }, []);
+
+  // Close the Check-markscheme dropdown when clicking anywhere outside it.
+  useEffect(() => {
+    if (!markAIMenuOpen) return;
+    const handler = (e: MouseEvent) => {
+      const root = markMenuRef.current;
+      if (root && !root.contains(e.target as Node)) {
+        setMarkAIMenuOpen(false);
+      }
+    };
+    // mousedown so we fire before any click handlers on the page
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [markAIMenuOpen]);
+
+  useEffect(() => {
+    // On mobile, the QR option just opens the camera directly — no session needed.
+    if (markAIMode === 'qr' && !isMobile && !qrSessionUrl && !qrWaiting) {
+      startQrSession();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [markAIMode, isMobile]);
+
+  const MAX_UPLOAD_IMAGES = 6;
+
+  const addUploadFiles = useCallback(async (files: File[]) => {
+    const imageFiles = files.filter((f) => f.type.startsWith('image/'));
+    if (imageFiles.length === 0) return;
+    // Read every file first (side effects must NOT live inside a setState updater —
+    // React StrictMode runs updaters twice in dev, which would double-append).
+    const dataUrls = await Promise.all(
+      imageFiles.map(
+        (file) =>
+          new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (ev) => resolve(ev.target?.result as string);
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+          })
+      )
+    );
+    setUploadedMarkImages((prev) => {
+      const room = MAX_UPLOAD_IMAGES - prev.length;
+      if (room <= 0) return prev;
+      return [...prev, ...dataUrls.slice(0, room)];
+    });
+  }, []);
+
+  // Global paste listener while the upload modal is open — works anywhere on the page,
+  // no focused input needed. Skip if a text field has focus so we don't hijack normal paste.
+  useEffect(() => {
+    if (markAIMode !== 'upload' || markResult || markLoading) return;
+    const handler = (e: ClipboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) return;
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      const files = Array.from(items)
+        .filter((it) => it.type.startsWith('image/'))
+        .map((it) => it.getAsFile())
+        .filter((f): f is File => !!f);
+      if (files.length === 0) return;
+      e.preventDefault();
+      addUploadFiles(files);
+    };
+    window.addEventListener('paste', handler);
+    return () => window.removeEventListener('paste', handler);
+  }, [markAIMode, markResult, markLoading, addUploadFiles]);
+
   const isCurrentSelected = useMemo(() => {
     if (!currentMatch || currentMatch.labelId === 'error') return false;
     return selectedQuestions.includes(currentMatch.labelId);
@@ -127,6 +281,10 @@ function App() {
 
   const removeSelectedQuestion = useCallback((labelId: string) => {
     setSelectedQuestions((prev) => prev.filter((item) => item !== labelId));
+  }, []);
+
+  const reorderSelectedQuestions = useCallback((next: string[]) => {
+    setSelectedQuestions(next);
   }, []);
 
   const handleTextSearch = (e?: React.FormEvent, directText?: string) => {
@@ -160,8 +318,10 @@ function App() {
         setAnnotationMode={setAnnotationMode}
         clearAnnotations={clearAnnotations}
         undoLastAnnotation={undoLastAnnotation}
+        redoLastAnnotation={redoLastAnnotation}
         selectedQuestions={selectedQuestions}
         removeSelectedQuestion={removeSelectedQuestion}
+        reorderSelectedQuestions={reorderSelectedQuestions}
         onOpenFilters={() => setShowCenterFilter(true)}
         topMatches={topMatches}
         mobileOpen={mobileMenuOpen}
@@ -412,6 +572,7 @@ function App() {
             setAnnotationMode={setAnnotationMode}
             clearAnnotations={clearAnnotations}
             undoLastAnnotation={undoLastAnnotation}
+            redoLastAnnotation={redoLastAnnotation}
             onToggleTutor={() => setTutorOpen((prev) => !prev)}
           />
         )}
@@ -556,33 +717,413 @@ function App() {
                 {viewMode === 'paper' ? 'Hide paper' : 'View paper'}
               </button>
 
-              <button
-                data-testid="dock-check-markscheme-btn"
-                type="button"
-                onClick={() => setShowMarkscheme((prev) => !prev)}
-                style={{
-                  marginLeft: '4px',
-                  height: '44px',
-                  padding: '0 24px',
-                  background: '#111',
-                  color: '#fff',
-                  border: 'none',
-                  borderRadius: '999px',
-                  fontSize: '14px',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  fontFamily: 'var(--font-body)',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                <Check size={16} />
-                {showMarkscheme ? 'Hide markscheme' : 'Check markscheme'}
-              </button>
+              <div ref={markMenuRef} style={{ position: 'relative' }}>
+                <button
+                  data-testid="dock-check-markscheme-btn"
+                  type="button"
+                  onClick={() => {
+                    if (showMarkscheme) {
+                      setShowMarkscheme(false);
+                    } else {
+                      setMarkAIMenuOpen((p) => !p);
+                    }
+                  }}
+                  style={{
+                    marginLeft: '4px',
+                    height: '44px',
+                    padding: '0 22px',
+                    background: '#111',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: '999px',
+                    fontSize: '14px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    fontFamily: 'var(--font-body)',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  <Check size={16} />
+                  {showMarkscheme ? 'Hide markscheme' : 'Check markscheme'}
+                  {!showMarkscheme && (
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginLeft: '2px', opacity: 0.85 }}>
+                      <polyline points="6 9 12 15 18 9"></polyline>
+                    </svg>
+                  )}
+                </button>
+
+                {markAIMenuOpen && !showMarkscheme && (
+                  <>
+                    <div
+                      data-testid="check-markscheme-menu"
+                      style={{
+                        position: 'absolute',
+                        bottom: 'calc(100% + 8px)',
+                        right: 0,
+                        background: '#fff',
+                        border: '1px solid rgba(0,0,0,0.08)',
+                        borderRadius: '12px',
+                        boxShadow: '0 10px 30px rgba(0,0,0,0.15)',
+                        padding: '6px',
+                        minWidth: '280px',
+                        zIndex: 51,
+                      }}
+                    >
+                      <button
+                        data-testid="check-markscheme-option-view"
+                        onClick={() => { setShowMarkscheme((prev) => !prev); setMarkAIMenuOpen(false); }}
+                        style={{
+                          display: 'block', width: '100%', textAlign: 'left',
+                          padding: '10px 12px', background: 'transparent', border: 'none',
+                          borderRadius: '8px', cursor: 'pointer', fontFamily: 'var(--font-body)',
+                        }}
+                        onMouseEnter={(e) => (e.currentTarget.style.background = '#f3f4f6')}
+                        onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                      >
+                        <div style={{ fontSize: '13px', fontWeight: 600, color: '#111' }}>
+                          {showMarkscheme ? 'Hide markscheme' : 'View markscheme'}
+                        </div>
+                        <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '2px' }}>
+                          Show the official answer key alongside the question
+                        </div>
+                      </button>
+
+                      <div style={{ height: 1, background: 'rgba(0,0,0,0.06)', margin: '4px 6px' }} />
+
+                      {[
+                        { id: 'pen' as const, label: 'Mark what I drew with the pen', desc: 'Use your on-screen annotations' },
+                        { id: 'upload' as const, label: 'Upload or paste work', desc: 'Image from your computer' },
+                        isMobile
+                          ? { id: 'qr' as const, label: 'Take photos with my camera', desc: 'Snap one or more pages of your work' }
+                          : { id: 'qr' as const, label: 'Scan QR to use phone camera', desc: 'Send one or more photos from your phone' },
+                      ].map((opt) => (
+                        <button
+                          key={opt.id}
+                          data-testid={`mark-with-ai-option-${opt.id}`}
+                          onClick={() => { setMarkAIMode(opt.id); setMarkAIMenuOpen(false); }}
+                          style={{
+                            display: 'block',
+                            width: '100%',
+                            textAlign: 'left',
+                            padding: '10px 12px',
+                            background: 'transparent',
+                            border: 'none',
+                            borderRadius: '8px',
+                            cursor: 'pointer',
+                            fontFamily: 'var(--font-body)',
+                          }}
+                          onMouseEnter={(e) => (e.currentTarget.style.background = '#f3f4f6')}
+                          onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                        >
+                          <div style={{ fontSize: '13px', fontWeight: 600, color: '#111' }}>{opt.label}</div>
+                          <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '2px' }}>{opt.desc}</div>
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
           </div>
+        )}
+
+        {markAIMode && (
+          <>
+            <div
+              onClick={closeMarkAI}
+              style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)', zIndex: 200 }}
+            />
+            <div
+              data-testid="mark-with-ai-modal"
+              style={{
+                position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+                background: '#fff', borderRadius: '16px', padding: '28px', zIndex: 201,
+                width: 'min(560px, 92vw)', maxHeight: '85vh', overflow: 'auto',
+                boxShadow: '0 20px 60px rgba(0,0,0,0.25)',
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 700, fontFamily: 'var(--font-heading)' }}>
+                  {markResult ? 'AI marking results' :
+                    markAIMode === 'pen' ? 'Mark your pen annotations' :
+                    markAIMode === 'upload' ? 'Upload or paste your work' :
+                    isMobile ? 'Photograph your work' : 'Scan to connect your phone'}
+                </h3>
+                <button
+                  onClick={closeMarkAI}
+                  style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '20px', color: '#6b7280' }}
+                >
+                  ×
+                </button>
+              </div>
+
+              {markLoading && (
+                <div style={{ padding: '32px 0', textAlign: 'center', color: '#6b7280', fontSize: '14px' }}>
+                  Marking your work with AI… this can take 20–30s.
+                </div>
+              )}
+
+              {markError && !markLoading && (
+                <div style={{ padding: '12px 14px', background: '#FEE2E2', color: '#991B1B', borderRadius: '8px', fontSize: '13px', marginBottom: '12px' }}>
+                  {markError}
+                </div>
+              )}
+
+              {markResult && !markLoading && (
+                <div>
+                  {submittedWork.length > 0 && (
+                    <div style={{
+                      marginBottom: '18px',
+                      padding: '10px',
+                      background: '#f9fafb',
+                      borderRadius: '12px',
+                      border: '1px solid #f3f4f6',
+                    }}>
+                      <div style={{ fontSize: '11px', color: '#6b7280', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '8px' }}>
+                        {submittedWork.length === 1 ? 'Your work' : `Your work · ${submittedWork.length} photos`}
+                      </div>
+                      <div style={{
+                        display: 'flex',
+                        gap: '8px',
+                        overflowX: submittedWork.length > 1 ? 'auto' : 'visible',
+                        paddingBottom: submittedWork.length > 1 ? '4px' : 0,
+                      }}>
+                        {submittedWork.map((src, i) => (
+                          <img
+                            key={i}
+                            src={src}
+                            alt={`submitted work ${i + 1}`}
+                            style={{
+                              width: submittedWork.length === 1 ? '100%' : '140px',
+                              height: submittedWork.length === 1 ? 'auto' : '180px',
+                              maxHeight: submittedWork.length === 1 ? '300px' : '180px',
+                              objectFit: submittedWork.length === 1 ? 'contain' : 'cover',
+                              borderRadius: '8px',
+                              background: '#fff',
+                              border: '1px solid #e5e7eb',
+                              flexShrink: 0,
+                            }}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginBottom: '16px' }}>
+                    <span style={{ fontSize: '40px', fontWeight: 800, color: '#111' }}>{markResult.score}</span>
+                    <span style={{ fontSize: '18px', color: '#6b7280' }}>/ {markResult.total}</span>
+                  </div>
+                  <p style={{ fontSize: '14px', color: '#374151', lineHeight: 1.5, marginBottom: '16px' }}>
+                    {markResult.overallComment}
+                  </p>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {markResult.feedback.map((item, i) => (
+                      <div key={i} style={{
+                        padding: '10px 12px',
+                        background: item.awarded ? '#ECFDF5' : '#FEF2F2',
+                        borderLeft: `3px solid ${item.awarded ? '#10B981' : '#EF4444'}`,
+                        borderRadius: '6px',
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: 600, color: item.awarded ? '#065F46' : '#991B1B' }}>
+                          <span>{item.awarded ? '✓' : '✗'}</span>
+                          <span>{item.mark}</span>
+                        </div>
+                        <div style={{ fontSize: '12px', color: '#374151', marginTop: '4px', lineHeight: 1.4 }}>
+                          {item.reasoning}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {!markResult && !markLoading && markAIMode === 'pen' && (
+                <div>
+                  <p style={{ fontSize: '14px', color: '#374151', lineHeight: 1.5 }}>
+                    The AI will analyse what you've drawn on this question with the pen tool and mark it against the markscheme.
+                  </p>
+                  <button
+                    onClick={handleMarkPen}
+                    style={{ marginTop: '16px', padding: '10px 18px', background: '#111', color: '#fff', border: 'none', borderRadius: '999px', cursor: 'pointer', fontWeight: 600 }}
+                  >
+                    Mark now
+                  </button>
+                </div>
+              )}
+
+              {!markResult && !markLoading && markAIMode === 'upload' && (
+                <div>
+                  <p style={{ fontSize: '14px', color: '#374151', marginBottom: '14px' }}>
+                    Drop, pick, or paste one or more images of your work — anywhere on this page.
+                  </p>
+                  <input
+                    ref={uploadInputRef}
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    style={{ display: 'none' }}
+                    onChange={(e) => {
+                      const files = Array.from(e.target.files || []);
+                      if (files.length) addUploadFiles(files);
+                      if (e.target) e.target.value = '';
+                    }}
+                  />
+                  {uploadedMarkImages.length === 0 ? (
+                    <div
+                      onClick={() => uploadInputRef.current?.click()}
+                      onDragOver={(e) => { e.preventDefault(); e.currentTarget.style.borderColor = '#111'; e.currentTarget.style.background = '#fafafa'; }}
+                      onDragLeave={(e) => { e.currentTarget.style.borderColor = '#d1d5db'; e.currentTarget.style.background = '#fff'; }}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        e.currentTarget.style.borderColor = '#d1d5db';
+                        e.currentTarget.style.background = '#fff';
+                        addUploadFiles(Array.from(e.dataTransfer.files));
+                      }}
+                      style={{
+                        padding: '28px 20px',
+                        border: '2px dashed #d1d5db',
+                        borderRadius: '14px',
+                        background: '#fff',
+                        textAlign: 'center',
+                        cursor: 'pointer',
+                        transition: 'border-color 120ms, background 120ms',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        gap: '10px',
+                      }}
+                    >
+                      <div style={{
+                        width: 44, height: 44, borderRadius: '50%',
+                        background: '#f3f4f6',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      }}>
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#374151" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                          <polyline points="17 8 12 3 7 8"></polyline>
+                          <line x1="12" y1="3" x2="12" y2="15"></line>
+                        </svg>
+                      </div>
+                      <div style={{ fontSize: '14px', fontWeight: 600, color: '#111' }}>
+                        Click to choose files
+                      </div>
+                      <div style={{ fontSize: '12px', color: '#6b7280' }}>
+                        or drag images here · or paste with ⌘V / Ctrl+V · up to {MAX_UPLOAD_IMAGES}
+                      </div>
+                    </div>
+                  ) : (
+                    <div>
+                      <div
+                        onDragOver={(e) => { e.preventDefault(); }}
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          addUploadFiles(Array.from(e.dataTransfer.files));
+                        }}
+                        style={{
+                          display: 'grid',
+                          gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))',
+                          gap: '8px',
+                        }}
+                      >
+                        {uploadedMarkImages.map((src, i) => (
+                          <div key={i} style={{ position: 'relative', aspectRatio: '3 / 4', borderRadius: '10px', overflow: 'hidden', border: '1px solid #e5e7eb' }}>
+                            <img src={src} alt={`upload ${i + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            <span style={{
+                              position: 'absolute', top: 4, left: 4,
+                              background: 'rgba(17,17,17,0.78)', color: '#fff',
+                              fontSize: 11, fontWeight: 600, padding: '2px 7px', borderRadius: 999,
+                            }}>{i + 1}</span>
+                            <button
+                              aria-label={`remove image ${i + 1}`}
+                              onClick={() => setUploadedMarkImages((prev) => prev.filter((_, idx) => idx !== i))}
+                              style={{
+                                position: 'absolute', top: 4, right: 4,
+                                width: 24, height: 24, borderRadius: '50%', border: 'none',
+                                background: 'rgba(17,17,17,0.78)', color: '#fff',
+                                cursor: 'pointer', fontSize: 14, lineHeight: 1,
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              }}
+                            >×</button>
+                          </div>
+                        ))}
+                      </div>
+                      <div style={{ display: 'flex', gap: '8px', marginTop: '14px' }}>
+                        <button
+                          onClick={() => uploadInputRef.current?.click()}
+                          disabled={uploadedMarkImages.length >= MAX_UPLOAD_IMAGES}
+                          style={{
+                            flex: '0 0 auto', padding: '10px 16px',
+                            background: '#fff', color: '#111',
+                            border: '1.5px solid #111',
+                            borderRadius: '999px',
+                            cursor: uploadedMarkImages.length >= MAX_UPLOAD_IMAGES ? 'not-allowed' : 'pointer',
+                            opacity: uploadedMarkImages.length >= MAX_UPLOAD_IMAGES ? 0.4 : 1,
+                            fontWeight: 600, fontSize: '13px',
+                          }}
+                        >
+                          {uploadedMarkImages.length >= MAX_UPLOAD_IMAGES ? `Max ${MAX_UPLOAD_IMAGES}` : `Add more (${uploadedMarkImages.length}/${MAX_UPLOAD_IMAGES})`}
+                        </button>
+                        <button
+                          onClick={() => runMark(uploadedMarkImages)}
+                          style={{
+                            flex: 1, padding: '10px 18px',
+                            background: '#111', color: '#fff', border: 'none',
+                            borderRadius: '999px', cursor: 'pointer', fontWeight: 600, fontSize: '14px',
+                          }}
+                        >
+                          Mark now {uploadedMarkImages.length > 1 ? `(${uploadedMarkImages.length} images)` : ''}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {!markResult && !markLoading && markAIMode === 'qr' && isMobile && (
+                <PhotoCapture
+                  helperText="Take one or more photos of your written work. Tap 'Mark now' when you're done."
+                  submitLabel="Mark now"
+                  onSubmit={(photos) => runMark(photos)}
+                />
+              )}
+
+              {!markResult && !markLoading && markAIMode === 'qr' && !isMobile && (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
+                  <p style={{ fontSize: '14px', color: '#374151', marginBottom: '20px', maxWidth: '380px' }}>
+                    Scan this QR code with your phone to open the camera. Your photos will appear here automatically and the AI will start marking.
+                  </p>
+                  {qrSessionUrl ? (
+                    <>
+                      <div style={{
+                        padding: '14px',
+                        background: '#fff',
+                        border: '1px solid #e5e7eb',
+                        borderRadius: '16px',
+                        boxShadow: '0 4px 20px rgba(0,0,0,0.06)',
+                      }}>
+                        <img
+                          src={`https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=${encodeURIComponent(qrSessionUrl)}`}
+                          alt="QR code"
+                          style={{ width: '240px', height: '240px', display: 'block' }}
+                        />
+                      </div>
+                      <p style={{ fontSize: '13px', color: '#6b7280', marginTop: '16px' }}>
+                        {qrWaiting ? 'Waiting for your phone…' : 'Session expired — close and reopen this dialog.'}
+                      </p>
+                      <details style={{ marginTop: '8px', fontSize: '11px', color: '#9ca3af', maxWidth: '420px' }}>
+                        <summary style={{ cursor: 'pointer' }}>Or open this link on your phone</summary>
+                        <code style={{ display: 'block', marginTop: '6px', wordBreak: 'break-all', userSelect: 'all' }}>{qrSessionUrl}</code>
+                      </details>
+                    </>
+                  ) : (
+                    <p style={{ fontSize: '13px', color: '#6b7280' }}>Preparing secure session…</p>
+                  )}
+                </div>
+              )}
+            </div>
+          </>
         )}
 
         {/* Filter modal */}

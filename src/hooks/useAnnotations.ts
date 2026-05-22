@@ -10,6 +10,10 @@ interface UseAnnotationsProps {
 export function useAnnotations({ currentLabelId, viewMode, showMarkscheme }: UseAnnotationsProps) {
   const [annotationMode, setAnnotationMode] = useState<AnnotationMode>('none');
   const [questionDrawings, setQuestionDrawings] = useState<Map<string, DrawingData>>(new Map());
+  type RedoEntry =
+    | { kind: 'path'; key: string; item: { points: Array<{ x: number; y: number }>; color: string } }
+    | { kind: 'text'; key: string; item: { x: number; y: number; text: string; color: string } };
+  const redoStackRef = useRef<RedoEntry[]>([]);
   const isDrawingRef = useRef(false);
   const currentPathRef = useRef<Array<{ x: number; y: number }>>([]);
   const [textInputPos, setTextInputPos] = useState<TextInputPosition | null>(null);
@@ -244,6 +248,7 @@ export function useAnnotations({ currentLabelId, viewMode, showMarkscheme }: Use
 
     const finishedPath = [...path];
     const key = `${currentLabelId}-${target}`;
+    redoStackRef.current = [];
     setQuestionDrawings(prev => {
       const newMap = new Map(prev);
       const existing = newMap.get(key) || { paths: [], texts: [] };
@@ -266,6 +271,7 @@ export function useAnnotations({ currentLabelId, viewMode, showMarkscheme }: Use
     if (!textInputPos || !textInputValue.trim() || !currentLabelId) return;
     
     const key = `${currentLabelId}-${textInputPos.target}`;
+    redoStackRef.current = [];
     setQuestionDrawings(prev => {
       const newMap = new Map(prev);
       const existing = newMap.get(key) || { paths: [], texts: [] };
@@ -285,6 +291,7 @@ export function useAnnotations({ currentLabelId, viewMode, showMarkscheme }: Use
 
   const clearAnnotations = useCallback(() => {
     if (!currentLabelId) return;
+    redoStackRef.current = [];
     setQuestionDrawings(prev => {
       const newMap = new Map(prev);
       newMap.delete(`${currentLabelId}-question`);
@@ -310,20 +317,23 @@ export function useAnnotations({ currentLabelId, viewMode, showMarkscheme }: Use
     
     setQuestionDrawings(prev => {
       const newMap = new Map(prev);
-      
+
       // Try question first, then markscheme
       for (const key of [questionKey, markschemeKey]) {
         const data = newMap.get(key);
         if (data) {
           const totalItems = data.paths.length + data.texts.length;
           if (totalItems > 0) {
-            // Remove the last added item (texts are added after paths typically)
             if (data.texts.length > 0) {
+              const removed = data.texts[data.texts.length - 1];
+              redoStackRef.current.push({ kind: 'text', key, item: removed });
               newMap.set(key, {
                 ...data,
                 texts: data.texts.slice(0, -1)
               });
             } else if (data.paths.length > 0) {
+              const removed = data.paths[data.paths.length - 1];
+              redoStackRef.current.push({ kind: 'path', key, item: removed });
               newMap.set(key, {
                 ...data,
                 paths: data.paths.slice(0, -1)
@@ -342,6 +352,50 @@ export function useAnnotations({ currentLabelId, viewMode, showMarkscheme }: Use
       redrawCanvas(markschemeCanvasRef.current, currentLabelId, 'markscheme');
     }, 0);
   }, [currentLabelId, redrawCanvas]);
+
+  // Redo last undone annotation
+  const redoLastAnnotation = useCallback(() => {
+    if (!currentLabelId) return;
+    const entry = redoStackRef.current.pop();
+    if (!entry) return;
+
+    setQuestionDrawings(prev => {
+      const newMap = new Map(prev);
+      const existing = newMap.get(entry.key) || { paths: [], texts: [] };
+      if (entry.kind === 'path') {
+        newMap.set(entry.key, { ...existing, paths: [...existing.paths, entry.item] });
+      } else {
+        newMap.set(entry.key, { ...existing, texts: [...existing.texts, entry.item] });
+      }
+      return newMap;
+    });
+
+    setTimeout(() => {
+      redrawCanvas(questionCanvasRef.current, currentLabelId, 'question');
+      redrawCanvas(markschemeCanvasRef.current, currentLabelId, 'markscheme');
+    }, 0);
+  }, [currentLabelId, redrawCanvas]);
+
+  // Keyboard shortcuts: Ctrl/Cmd+Z = undo, Ctrl/Cmd+Y or Ctrl/Cmd+Shift+Z = redo
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (!currentLabelId) return;
+      const target = e.target as HTMLElement | null;
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) return;
+      const mod = e.ctrlKey || e.metaKey;
+      if (!mod) return;
+      const key = e.key.toLowerCase();
+      if (key === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        undoLastAnnotation();
+      } else if (key === 'y' || (key === 'z' && e.shiftKey)) {
+        e.preventDefault();
+        redoLastAnnotation();
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [currentLabelId, undoLastAnnotation, redoLastAnnotation]);
 
   // Eraser - remove annotation at click position
   const handleEraserClick = useCallback((e: React.MouseEvent<HTMLCanvasElement>, target: 'question' | 'markscheme') => {
@@ -415,6 +469,7 @@ export function useAnnotations({ currentLabelId, viewMode, showMarkscheme }: Use
     clearAnnotations,
     resizeCanvases,
     undoLastAnnotation,
+    redoLastAnnotation,
     handleEraserClick
   };
 }

@@ -41,6 +41,7 @@ interface QuestionViewerProps {
   setAnnotationMode: (mode: AnnotationMode) => void;
   clearAnnotations: () => void;
   undoLastAnnotation: () => void;
+  redoLastAnnotation: () => void;
   onToggleTutor: () => void;
 }
 
@@ -79,6 +80,7 @@ export function QuestionViewer({
   setAnnotationMode,
   clearAnnotations,
   undoLastAnnotation,
+  redoLastAnnotation,
   onToggleTutor,
 }: QuestionViewerProps) {
   const pdfMenuRef = useRef<HTMLDivElement | null>(null);
@@ -483,10 +485,16 @@ export function QuestionViewer({
               <path d="M6.5 13.5L12 8"></path>
             </svg>
           </button>
-          <button data-testid="viewer-undo-btn" onClick={undoLastAnnotation} style={toolbarBtn()} title="Undo">
+          <button data-testid="viewer-undo-btn" onClick={undoLastAnnotation} style={toolbarBtn()} title="Undo (Ctrl+Z)">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M3 7v6h6"></path>
               <path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"></path>
+            </svg>
+          </button>
+          <button data-testid="viewer-redo-btn" onClick={redoLastAnnotation} style={toolbarBtn()} title="Redo (Ctrl+Y)">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 7v6h-6"></path>
+              <path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3L21 13"></path>
             </svg>
           </button>
           <button data-testid="viewer-clear-btn" onClick={() => setShowClearConfirm(true)} style={toolbarBtn('danger')} title="Clear all">
