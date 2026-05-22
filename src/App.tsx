@@ -861,8 +861,68 @@ function App() {
               </div>
 
               {markLoading && (
-                <div style={{ padding: '32px 0', textAlign: 'center', color: '#6b7280', fontSize: '14px' }}>
-                  Marking your work with AI… this can take 20–30s.
+                <div>
+                  {submittedWork.length > 0 && (
+                    <div style={{
+                      marginBottom: '18px',
+                      padding: '10px',
+                      background: '#f9fafb',
+                      borderRadius: '12px',
+                      border: '1px solid #f3f4f6',
+                    }}>
+                      <div style={{ fontSize: '11px', color: '#6b7280', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '8px' }}>
+                        {submittedWork.length === 1 ? 'Your work' : `Your work · ${submittedWork.length} photos`}
+                      </div>
+                      <div style={{
+                        display: 'flex',
+                        gap: '8px',
+                        overflowX: submittedWork.length > 1 ? 'auto' : 'visible',
+                        paddingBottom: submittedWork.length > 1 ? '4px' : 0,
+                      }}>
+                        {submittedWork.map((src, i) => (
+                          <img
+                            key={i}
+                            src={src}
+                            alt={`submitted work ${i + 1}`}
+                            style={{
+                              width: submittedWork.length === 1 ? '100%' : '140px',
+                              height: submittedWork.length === 1 ? 'auto' : '180px',
+                              maxHeight: submittedWork.length === 1 ? '300px' : '180px',
+                              objectFit: submittedWork.length === 1 ? 'contain' : 'cover',
+                              borderRadius: '8px',
+                              background: '#fff',
+                              border: '1px solid #e5e7eb',
+                              flexShrink: 0,
+                            }}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  <div style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    gap: '14px',
+                    padding: '20px 0',
+                    color: '#374151', fontSize: '14px',
+                  }}>
+                    <span
+                      className="animate-spin"
+                      aria-hidden
+                      style={{
+                        width: 22, height: 22,
+                        border: '2.5px solid #e5e7eb',
+                        borderTopColor: '#111',
+                        borderRadius: '50%',
+                        display: 'inline-block',
+                      }}
+                    />
+                    <span>
+                      <span style={{ fontWeight: 600 }}>Marking your work with AI</span>
+                      <span className="animate-pulse" style={{ display: 'inline-block', marginLeft: '6px', color: '#6b7280' }}>
+                        this usually takes 20–30s
+                      </span>
+                    </span>
+                  </div>
                 </div>
               )}
 
