@@ -919,7 +919,7 @@ function App() {
                     <span>
                       <span style={{ fontWeight: 600 }}>Marking your work with AI</span>
                       <span className="animate-pulse" style={{ display: 'inline-block', marginLeft: '6px', color: '#6b7280' }}>
-                        this usually takes 20–30s
+                        usually only takes a few seconds
                       </span>
                     </span>
                   </div>
