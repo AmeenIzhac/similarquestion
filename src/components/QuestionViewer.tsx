@@ -4,7 +4,7 @@ import type { Match, ViewMode, AnnotationMode, TextInputPosition, Qualification 
 import { formatLabelId, getDocumentBaseFromLabel } from '../utils/formatters';
 import { assetUrl } from '../utils/assets';
 import { ChatBot } from './ChatBot';
-import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
+import { TransformWrapper, TransformComponent, type ReactZoomPanPinchRef } from 'react-zoom-pan-pinch';
 
 interface QuestionViewerProps {
   qualification: Qualification;
@@ -89,6 +89,12 @@ export function QuestionViewer({
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [qMinScale, setQMinScale] = useState(0.1);
   const [mMinScale, setMMinScale] = useState(0.1);
+  const qTransformRef = useRef<ReactZoomPanPinchRef | null>(null);
+  const mTransformRef = useRef<ReactZoomPanPinchRef | null>(null);
+  const qSnapAccumRef = useRef(0);
+  const mSnapAccumRef = useRef(0);
+  const qSnapTimeoutRef = useRef<number | null>(null);
+  const mSnapTimeoutRef = useRef<number | null>(null);
 
   const calculateScales = () => {
     if (questionContainerRef.current) {
@@ -126,31 +132,107 @@ export function QuestionViewer({
   }, [pdfMenuOpen]);
 
   useEffect(() => {
-    const handleWheel = (e: WheelEvent) => {
+    const SNAP_SCALE = 1;
+    const SNAP_RELEASE_THRESHOLD = 120;
+    const SNAP_RESET_MS = 250;
+    const MAX_SCALE = 4;
+    const SENSITIVITY = 0.0025;
+
+    const zoomWithSnap = (
+      e: WheelEvent,
+      container: HTMLDivElement,
+      transformRef: React.MutableRefObject<ReactZoomPanPinchRef | null>,
+      accumRef: React.MutableRefObject<number>,
+      timeoutRef: React.MutableRefObject<number | null>,
+      minScale: number,
+    ) => {
+      const inst = transformRef.current;
+      if (!inst) return;
+      const { scale, positionX, positionY } = inst.instance.transformState;
+
+      const factor = Math.exp(-e.deltaY * SENSITIVITY);
+      let desiredScale = scale * factor;
+      desiredScale = Math.max(minScale, Math.min(MAX_SCALE, desiredScale));
+
+      const willCross = (scale - SNAP_SCALE) * (desiredScale - SNAP_SCALE) < 0;
+
+      const rect = container.getBoundingClientRect();
+      const cx = e.clientX - rect.left;
+      const cy = e.clientY - rect.top;
+      const contentX = (cx - positionX) / scale;
+      const contentY = (cy - positionY) / scale;
+
+      const applyTransform = (s: number) => {
+        const newX = cx - contentX * s;
+        const newY = cy - contentY * s;
+        inst.setTransform(newX, newY, s, 0);
+      };
+
+      // Snap only kicks in when crossing 1× from one side to the other.
+      // At exactly 1× (initial state), zooming should proceed freely.
+      if (willCross) {
+        accumRef.current += Math.abs(e.deltaY);
+        if (timeoutRef.current) window.clearTimeout(timeoutRef.current);
+        timeoutRef.current = window.setTimeout(() => { accumRef.current = 0; }, SNAP_RESET_MS);
+
+        if (accumRef.current < SNAP_RELEASE_THRESHOLD) {
+          applyTransform(SNAP_SCALE);
+          return;
+        }
+        accumRef.current = 0;
+      } else {
+        accumRef.current = 0;
+      }
+
+      applyTransform(desiredScale);
+    };
+
+    const makeHandler = (
+      container: HTMLDivElement,
+      transformRef: React.MutableRefObject<ReactZoomPanPinchRef | null>,
+      accumRef: React.MutableRefObject<number>,
+      timeoutRef: React.MutableRefObject<number | null>,
+      getMinScale: () => number,
+    ) => (e: WheelEvent) => {
+      // Non-zoom wheel: don't let it bubble (matches prior behavior allowing local scroll).
       if (!e.ctrlKey) {
         e.stopPropagation();
+        return;
       }
+      // Trackpad pinch / ctrl-wheel: custom zoom with snap-at-1.
+      e.preventDefault();
+      e.stopPropagation();
+      if (annotationMode !== 'none') return;
+      if (isMobile) return;
+      zoomWithSnap(e, container, transformRef, accumRef, timeoutRef, getMinScale());
     };
 
     const qContainer = questionContainerRef.current;
     const mContainer = markschemeContainerRef.current;
 
-    if (qContainer) {
-      qContainer.addEventListener('wheel', handleWheel, { capture: true, passive: false });
+    const qHandler = qContainer
+      ? makeHandler(qContainer, qTransformRef, qSnapAccumRef, qSnapTimeoutRef, () => qMinScale)
+      : null;
+    const mHandler = mContainer
+      ? makeHandler(mContainer, mTransformRef, mSnapAccumRef, mSnapTimeoutRef, () => mMinScale)
+      : null;
+
+    if (qContainer && qHandler) {
+      qContainer.addEventListener('wheel', qHandler, { capture: true, passive: false });
     }
-    if (mContainer) {
-      mContainer.addEventListener('wheel', handleWheel, { capture: true, passive: false });
+    if (mContainer && mHandler) {
+      mContainer.addEventListener('wheel', mHandler, { capture: true, passive: false });
     }
 
     return () => {
-      if (qContainer) {
-        qContainer.removeEventListener('wheel', handleWheel, { capture: true });
+      if (qContainer && qHandler) {
+        qContainer.removeEventListener('wheel', qHandler, { capture: true });
       }
-      if (mContainer) {
-        mContainer.removeEventListener('wheel', handleWheel, { capture: true });
+      if (mContainer && mHandler) {
+        mContainer.removeEventListener('wheel', mHandler, { capture: true });
       }
     };
-  }, [questionContainerRef, markschemeContainerRef, showMarkscheme, isMobile, isChatOpen]);
+  }, [questionContainerRef, markschemeContainerRef, showMarkscheme, isMobile, isChatOpen, annotationMode, qMinScale, mMinScale]);
 
   const documentBase = useMemo(() => getDocumentBaseFromLabel(currentMatch?.labelId), [currentMatch?.labelId]);
   const paperPdfUrl = documentBase ? assetUrl(qualification, 'papers', `${documentBase}.pdf`) : null;
@@ -545,8 +627,9 @@ export function QuestionViewer({
               }}
             >
               <TransformWrapper
+                ref={qTransformRef}
                 minScale={isMobile ? 1 : qMinScale}
-                maxScale={isMobile ? 4 : 1}
+                maxScale={4}
                 initialScale={1}
                 centerZoomedOut={true}
                 customTransform={(x, y, scale) => {
@@ -558,7 +641,7 @@ export function QuestionViewer({
                   return `translate3d(${newX}px, ${Math.min(y, 0)}px, 0) scale(${scale})`;
                 }}
                 panning={{ disabled: annotationMode !== 'none' }}
-                wheel={{ step: 0.5, disabled: annotationMode !== 'none' }}
+                wheel={{ step: 0.5, disabled: isMobile || annotationMode !== 'none' }}
                 pinch={{ step: 15, disabled: annotationMode !== 'none' }}
                 doubleClick={{ disabled: true }}
               >
@@ -645,8 +728,9 @@ export function QuestionViewer({
                 }}
               >
                 <TransformWrapper
+                  ref={mTransformRef}
                   minScale={isMobile ? 1 : mMinScale}
-                  maxScale={isMobile ? 4 : 1}
+                  maxScale={4}
                   initialScale={1}
                   centerZoomedOut={true}
                   customTransform={(x, y, scale) => {
@@ -658,7 +742,7 @@ export function QuestionViewer({
                     return `translate3d(${newX}px, ${Math.min(y, 0)}px, 0) scale(${scale})`;
                   }}
                   panning={{ disabled: annotationMode !== 'none' }}
-                  wheel={{ step: 0.5, disabled: annotationMode !== 'none' }}
+                  wheel={{ step: 0.5, disabled: isMobile || annotationMode !== 'none' }}
                   pinch={{ step: 15, disabled: annotationMode !== 'none' }}
                   doubleClick={{ disabled: true }}
                 >
