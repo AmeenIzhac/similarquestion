@@ -33,18 +33,18 @@ export function WorksheetPanel({
     reorderSelectedQuestions(next);
   }, [selectedQuestions, reorderSelectedQuestions]);
 
-  const handleDownloadSelected = useCallback(async () => {
+  const handleDownloadSelected = useCallback(async (mode: PdfMode) => {
     if (selectedQuestions.length === 0 || isSavingPdf) return;
 
     setIsSavingPdf(true);
     try {
-      await generatePdf(selectedQuestions, pdfMode, 'selected', qualification);
+      await generatePdf(selectedQuestions, mode, 'selected', qualification);
     } catch (error) {
       console.error('Error generating PDF:', error);
     } finally {
       setIsSavingPdf(false);
     }
-  }, [isSavingPdf, selectedQuestions, pdfMode]);
+  }, [isSavingPdf, selectedQuestions, qualification]);
 
   return (
     <div data-testid="worksheet-panel" style={{
@@ -146,7 +146,7 @@ export function WorksheetPanel({
                     onClick={() => {
                       setPdfMode(mode);
                       document.getElementById('downloadDropdown')!.style.display = 'none';
-                      handleDownloadSelected();
+                      handleDownloadSelected(mode);
                     }}
                   >
                     {label}
