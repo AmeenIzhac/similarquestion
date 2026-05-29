@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { formatLabelId } from '../utils/formatters';
 import { generatePdf } from '../utils/pdf';
 import { assetUrl } from '../utils/assets';
@@ -22,6 +22,9 @@ export function WorksheetPanel({
   const [isSavingPdf, setIsSavingPdf] = useState(false);
   const [pdfMode, setPdfMode] = useState<PdfMode>('questions');
   const [showDialog, setShowDialog] = useState(false);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const dropdownWrapperRef = useRef<HTMLDivElement | null>(null);
+  const isSavingRef = useRef(false);
   const dragIndexRef = useRef<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
@@ -34,17 +37,37 @@ export function WorksheetPanel({
   }, [selectedQuestions, reorderSelectedQuestions]);
 
   const handleDownloadSelected = useCallback(async (mode: PdfMode) => {
-    if (selectedQuestions.length === 0 || isSavingPdf) return;
+    if (selectedQuestions.length === 0 || isSavingRef.current) return;
 
+    isSavingRef.current = true;
     setIsSavingPdf(true);
     try {
       await generatePdf(selectedQuestions, mode, 'selected', qualification);
     } catch (error) {
       console.error('Error generating PDF:', error);
     } finally {
+      isSavingRef.current = false;
       setIsSavingPdf(false);
     }
-  }, [isSavingPdf, selectedQuestions, qualification]);
+  }, [selectedQuestions, qualification]);
+
+  useEffect(() => {
+    if (!isDropdownOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (!dropdownWrapperRef.current?.contains(e.target as Node)) {
+        setIsDropdownOpen(false);
+      }
+    };
+    const escHandler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setIsDropdownOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    document.addEventListener('keydown', escHandler);
+    return () => {
+      document.removeEventListener('mousedown', handler);
+      document.removeEventListener('keydown', escHandler);
+    };
+  }, [isDropdownOpen]);
 
   return (
     <div data-testid="worksheet-panel" style={{
@@ -76,15 +99,10 @@ export function WorksheetPanel({
             >
               Hide
             </button>
-            <div style={{ position: 'relative', display: 'inline-block' }}>
+            <div ref={dropdownWrapperRef} style={{ position: 'relative', display: 'inline-block' }}>
               <button
                 data-testid="worksheet-download-btn"
-                onClick={() => {
-                  const dropdown = document.getElementById('downloadDropdown');
-                  if (dropdown) {
-                    dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
-                  }
-                }}
+                onClick={() => setIsDropdownOpen((open) => !open)}
                 disabled={selectedQuestions.length === 0 || isSavingPdf}
                 style={{
                   backgroundColor: selectedQuestions.length === 0 || isSavingPdf ? 'var(--color-text-muted)' : 'var(--color-primary)',
@@ -105,54 +123,55 @@ export function WorksheetPanel({
                 {isSavingPdf ? 'Saving...' : `Download ${pdfMode === 'questions' ? 'Qs' : pdfMode === 'answers' ? 'As' : 'Q&A'}`}
                 <span style={{ fontSize: '9px', marginLeft: '2px' }}>&#9662;</span>
               </button>
-              <div
-                style={{
-                  position: 'absolute',
-                  right: 0,
-                  backgroundColor: 'var(--color-surface)',
-                  borderRadius: 'var(--radius-md)',
-                  boxShadow: 'var(--shadow-lg)',
-                  zIndex: 10,
-                  marginTop: '4px',
-                  minWidth: '160px',
-                  display: 'none',
-                  overflow: 'hidden',
-                }}
-                id="downloadDropdown"
-              >
-                {[
-                  { mode: 'questions' as const, label: 'Questions Only' },
-                  { mode: 'answers' as const, label: 'Answers Only' },
-                  { mode: 'interleaved' as const, label: 'Questions & Answers' }
-                ].map(({ mode, label }) => (
-                  <div
-                    key={mode}
-                    data-testid={`worksheet-download-${mode}`}
-                    style={{
-                      padding: '10px 16px',
-                      cursor: 'pointer',
-                      fontSize: '13px',
-                      color: 'var(--color-text)',
-                      backgroundColor: 'transparent',
-                      transition: 'all 0.15s',
-                      borderBottom: mode === 'interleaved' ? 'none' : '1px solid var(--color-border-light)',
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = 'var(--color-bg)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = 'transparent';
-                    }}
-                    onClick={() => {
-                      setPdfMode(mode);
-                      document.getElementById('downloadDropdown')!.style.display = 'none';
-                      handleDownloadSelected(mode);
-                    }}
-                  >
-                    {label}
-                  </div>
-                ))}
-              </div>
+              {isDropdownOpen && (
+                <div
+                  data-testid="worksheet-download-dropdown"
+                  style={{
+                    position: 'absolute',
+                    right: 0,
+                    backgroundColor: 'var(--color-surface)',
+                    borderRadius: 'var(--radius-md)',
+                    boxShadow: 'var(--shadow-lg)',
+                    zIndex: 10,
+                    marginTop: '4px',
+                    minWidth: '160px',
+                    overflow: 'hidden',
+                  }}
+                >
+                  {[
+                    { mode: 'questions' as const, label: 'Questions Only' },
+                    { mode: 'answers' as const, label: 'Answers Only' },
+                    { mode: 'interleaved' as const, label: 'Questions & Answers' }
+                  ].map(({ mode, label }) => (
+                    <div
+                      key={mode}
+                      data-testid={`worksheet-download-${mode}`}
+                      style={{
+                        padding: '10px 16px',
+                        cursor: 'pointer',
+                        fontSize: '13px',
+                        color: 'var(--color-text)',
+                        backgroundColor: 'transparent',
+                        transition: 'background-color 0.15s',
+                        borderBottom: mode === 'interleaved' ? 'none' : '1px solid var(--color-border-light)',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = 'var(--color-bg)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = 'transparent';
+                      }}
+                      onClick={() => {
+                        setIsDropdownOpen(false);
+                        setPdfMode(mode);
+                        handleDownloadSelected(mode);
+                      }}
+                    >
+                      {label}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>
