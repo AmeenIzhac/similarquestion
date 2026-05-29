@@ -39,10 +39,11 @@ export function WorksheetPanel({
   const handleDownloadSelected = useCallback(async (mode: PdfMode) => {
     if (selectedQuestions.length === 0 || isSavingRef.current) return;
 
+    const questionsForPdf = selectedQuestions.slice();
     isSavingRef.current = true;
     setIsSavingPdf(true);
     try {
-      await generatePdf(selectedQuestions, mode, 'selected', qualification);
+      await generatePdf(questionsForPdf, mode, 'selected', qualification);
     } catch (error) {
       console.error('Error generating PDF:', error);
     } finally {
@@ -143,32 +144,41 @@ export function WorksheetPanel({
                     { mode: 'answers' as const, label: 'Answers Only' },
                     { mode: 'interleaved' as const, label: 'Questions & Answers' }
                   ].map(({ mode, label }) => (
-                    <div
+                    <button
                       key={mode}
+                      type="button"
                       data-testid={`worksheet-download-${mode}`}
+                      disabled={isSavingPdf}
                       style={{
+                        width: '100%',
                         padding: '10px 16px',
-                        cursor: 'pointer',
+                        cursor: isSavingPdf ? 'not-allowed' : 'pointer',
                         fontSize: '13px',
                         color: 'var(--color-text)',
                         backgroundColor: 'transparent',
                         transition: 'background-color 0.15s',
                         borderBottom: mode === 'interleaved' ? 'none' : '1px solid var(--color-border-light)',
+                        borderTop: 'none',
+                        borderLeft: 'none',
+                        borderRight: 'none',
+                        textAlign: 'left',
+                        fontFamily: 'var(--font-body)',
                       }}
                       onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = 'var(--color-bg)';
+                        if (!isSavingPdf) e.currentTarget.style.backgroundColor = 'var(--color-bg)';
                       }}
                       onMouseLeave={(e) => {
                         e.currentTarget.style.backgroundColor = 'transparent';
                       }}
                       onClick={() => {
+                        if (isSavingPdf) return;
                         setIsDropdownOpen(false);
                         setPdfMode(mode);
                         handleDownloadSelected(mode);
                       }}
                     >
                       {label}
-                    </div>
+                    </button>
                   ))}
                 </div>
               )}
