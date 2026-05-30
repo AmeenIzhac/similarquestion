@@ -979,7 +979,7 @@ function App() {
                     {markResult.overallComment}
                   </p>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    {markResult.feedback.map((item, i) => (
+                    {(markResult.feedback || []).map((item, i) => (
                       <div key={i} style={{
                         padding: '10px 12px',
                         background: item.awarded ? '#ECFDF5' : '#FEF2F2',

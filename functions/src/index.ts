@@ -140,19 +140,45 @@ Do not include any prose outside the JSON. Use UK mathematical conventions.`;
 
             if (isReasoningModel) {
                 params.reasoning_effort = reasoning_effort;
-                params.max_completion_tokens = 2000;
+                // Reasoning tokens count against this budget, so a low cap can be
+                // entirely consumed by reasoning, leaving empty content. Give it
+                // ample room so the model can both reason and emit the JSON.
+                params.max_completion_tokens = 6000;
             } else {
                 params.max_tokens = 2000;
             }
 
             const completion = await openai.chat.completions.create(params);
-            const raw = completion.choices[0]?.message?.content || "{}";
+            const choice = completion.choices[0];
+            const raw = choice?.message?.content || "";
+
+            // An empty body usually means the model ran out of tokens mid-reasoning
+            // (finish_reason "length"). Surface it as an error rather than shipping
+            // "{}" with a 200 — the client would otherwise crash rendering it.
+            if (!raw.trim()) {
+                res.status(502).json({
+                    error: "The AI ran out of room before finishing. Please try again.",
+                    finishReason: choice?.finish_reason || null,
+                });
+                return;
+            }
 
             let parsed: any;
             try {
                 parsed = JSON.parse(raw);
             } catch {
                 res.status(502).json({ error: "Model returned non-JSON output", raw });
+                return;
+            }
+
+            // Guarantee the contract the client renders against. Without this a
+            // partial/malformed object (e.g. missing feedback[]) reaches the UI and
+            // crashes it.
+            if (!parsed || typeof parsed !== "object" || !Array.isArray(parsed.feedback)) {
+                res.status(502).json({
+                    error: "The AI returned an unexpected result. Please try again.",
+                    raw,
+                });
                 return;
             }
 

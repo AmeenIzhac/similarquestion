@@ -74,5 +74,32 @@ export async function callMarkWithAI(params: {
     const text = await res.text();
     throw new Error(`Mark API ${res.status}: ${text}`);
   }
-  return (await res.json()) as MarkResult;
+
+  const data: any = await res.json();
+
+  // The function is *prompted* to return {score,total,feedback[],overallComment}
+  // but nothing guarantees the model obeys. A reasoning model that spends its
+  // whole token budget on reasoning returns empty content, and the function then
+  // sends "{}" with status 200. If we hand such a payload to the UI, rendering
+  // markResult.feedback.map() throws and — with no error boundary — blanks the
+  // entire app, losing the student's pen work. So validate the shape here and
+  // surface a friendly error instead: the modal stays open and drawings survive.
+  if (
+    !data ||
+    typeof data !== "object" ||
+    Array.isArray(data) ||
+    data.error ||
+    !Array.isArray(data.feedback)
+  ) {
+    const msg = (data && (data.error || data.message)) ||
+      "The AI didn't return a valid result. Please try again.";
+    throw new Error(typeof msg === "string" ? msg : "Marking failed — please try again.");
+  }
+
+  return {
+    score: typeof data.score === "number" ? data.score : 0,
+    total: typeof data.total === "number" ? data.total : 0,
+    feedback: data.feedback.filter((f: any) => f && typeof f === "object"),
+    overallComment: typeof data.overallComment === "string" ? data.overallComment : "",
+  };
 }
