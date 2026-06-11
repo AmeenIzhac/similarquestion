@@ -1,5 +1,6 @@
 export { Sidebar } from './Sidebar';
 export { SearchBar } from './SearchBar';
+export { BoardSelector } from './BoardSelector';
 export { FilterModal } from './FilterModal';
 export { LoadingOverlay } from './LoadingOverlay';
 export { QuestionViewer } from './QuestionViewer';

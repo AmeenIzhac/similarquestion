@@ -1,11 +1,12 @@
-import type { LevelFilter, CalculatorFilter, Qualification } from '../types/index';
+import type { LevelFilter, CalculatorFilter, Qualification, Board } from '../types/index';
 
 export const searchPinecone = async (
   query: string,
   topK: number = 25,
   levelFilter: LevelFilter = 'all',
   calculatorFilter: CalculatorFilter = 'all',
-  qualification: Qualification = 'gcse'
+  qualification: Qualification = 'gcse',
+  board: Board = 'all'
 ) => {
   try {
     const pineconeApiKey = import.meta.env.VITE_PINECONE_API_KEY;
@@ -33,14 +34,27 @@ export const searchPinecone = async (
       filter.level = levelFilter;
     }
     
-    if (qualification === 'gcse') {
-      if (calculatorFilter === 'calculator') {
-        filter.paper_number = { $in: ['2', '3'] };
-      } else if (calculatorFilter === 'non-calculator') {
-        filter.paper_number = '1';
+    // Every record carries exam_board ('edexcel' | 'aqa' | 'ocr').
+    if (board !== 'all') {
+      filter.exam_board = board;
+    }
+
+    if (qualification === 'gcse' && calculatorFilter !== 'all') {
+      // Edexcel/AQA GCSE: paper 1 is non-calculator, papers 2-3 calculator.
+      // OCR (J560): papers 2 and 5 are non-calculator, the rest calculator.
+      const wantCalc = calculatorFilter === 'calculator';
+      if (board === 'ocr') {
+        filter.paper_number = wantCalc ? { $in: ['1', '3', '4', '6'] } : { $in: ['2', '5'] };
+      } else if (board === 'all') {
+        filter.$or = [
+          { exam_board: { $in: ['edexcel', 'aqa'] }, paper_number: wantCalc ? { $in: ['2', '3'] } : '1' },
+          { exam_board: 'ocr', paper_number: wantCalc ? { $in: ['1', '3', '4', '6'] } : { $in: ['2', '5'] } },
+        ];
+      } else {
+        filter.paper_number = wantCalc ? { $in: ['2', '3'] } : '1';
       }
     }
-    
+
     // If no filters applied, set to undefined
     const finalFilter = Object.keys(filter).length === 0 ? undefined : filter;
 
@@ -58,7 +72,7 @@ export const searchPinecone = async (
           top_k: topK,
           filter: finalFilter
         },
-        fields: ["category", "chunk_text"]
+        fields: ["text", "exam_board"]
       })
     });
 

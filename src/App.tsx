@@ -1,16 +1,17 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
-import { Sidebar, SearchBar, FilterModal, LoadingOverlay, QuestionViewer, TutorDock } from './components';
+import { Sidebar, SearchBar, BoardSelector, FilterModal, LoadingOverlay, QuestionViewer, TutorDock } from './components';
 import { PhotoCapture } from './components/PhotoCapture';
 import { useAnnotations } from './hooks/useAnnotations';
 import { useSearch } from './hooks/useSearch';
 import { Menu, Eye, EyeOff, Check } from 'lucide-react';
-import type { LevelFilter, CalculatorFilter, Qualification, ViewMode } from './types/index';
+import type { LevelFilter, CalculatorFilter, Qualification, Board, ExamBoard, ViewMode } from './types/index';
 import { getDocumentBaseFromLabel } from './utils/formatters';
 import { assetUrl } from './utils/assets';
 import { callMarkWithAI, exportPenWork, type MarkResult } from './utils/markWithAI';
 import { createMarkSession } from './utils/markSession';
 
 const QUALIFICATION_STORAGE_KEY = 'qualification';
+const BOARD_STORAGE_KEY = 'board';
 
 function readStoredQualification(): Qualification {
   if (typeof window === 'undefined') return 'gcse';
@@ -18,8 +19,15 @@ function readStoredQualification(): Qualification {
   return v === 'alevel' ? 'alevel' : 'gcse';
 }
 
+function readStoredBoard(): Board {
+  if (typeof window === 'undefined') return 'all';
+  const v = window.localStorage.getItem(BOARD_STORAGE_KEY);
+  return v === 'aqa' || v === 'edexcel' || v === 'ocr' ? v : 'all';
+}
+
 function App() {
   const [qualification, setQualification] = useState<Qualification>(readStoredQualification);
+  const [board, setBoard] = useState<Board>(readStoredBoard);
   const [levelFilter, setLevelFilter] = useState<LevelFilter>('all');
   const [calculatorFilter, setCalculatorFilter] = useState<CalculatorFilter>('all');
   const [numMatches, setNumMatches] = useState<number>(25);
@@ -29,6 +37,7 @@ function App() {
   const [viewMode, setViewMode] = useState<ViewMode>('question');
   const [showMarkscheme, setShowMarkscheme] = useState<boolean>(false);
   const [selectedQuestions, setSelectedQuestions] = useState<string[]>([]);
+  const [boardByLabel, setBoardByLabel] = useState<Record<string, ExamBoard>>({});
   const [isMobile, setIsMobile] = useState<boolean>(() => {
     if (typeof window === 'undefined') return false;
     return window.innerWidth <= 768;
@@ -59,7 +68,7 @@ function App() {
     nextMatch,
     prevMatch,
     searchByText
-  } = useSearch({ levelFilter, calculatorFilter, numMatches, qualification });
+  } = useSearch({ levelFilter, calculatorFilter, numMatches, qualification, board });
 
   const {
     annotationMode,
@@ -97,11 +106,23 @@ function App() {
     setLevelFilter('all');
     setCalculatorFilter('all');
     setSelectedQuestions([]);
+    setBoardByLabel({});
     if (hasStarted && searchText.trim()) {
       searchByText(searchText);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [qualification]);
+
+  // Persist the chosen board and re-run the active search when it changes.
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(BOARD_STORAGE_KEY, board);
+    }
+    if (hasStarted && searchText.trim()) {
+      searchByText(searchText);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [board]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -147,8 +168,8 @@ function App() {
     setSubmittedWork(workImages);
     try {
       const result = await callMarkWithAI({
-        questionImageUrl: assetUrl(qualification, 'questions', currentMatch.labelId),
-        markschemeImageUrl: assetUrl(qualification, 'answers', currentMatch.labelId),
+        questionImageUrl: assetUrl(qualification, 'questions', currentMatch.labelId, currentMatch.board),
+        markschemeImageUrl: assetUrl(qualification, 'answers', currentMatch.labelId, currentMatch.board),
         workImages,
         qualification: qualification === 'alevel' ? 'A-Level' : 'GCSE',
       });
@@ -277,10 +298,24 @@ function App() {
         ? prev.filter((item) => item !== currentMatch.labelId)
         : [...prev, currentMatch.labelId];
     });
+    setBoardByLabel((prev) => {
+      const next = { ...prev };
+      if (currentMatch.labelId in next) {
+        delete next[currentMatch.labelId];
+      } else if (currentMatch.board) {
+        next[currentMatch.labelId] = currentMatch.board;
+      }
+      return next;
+    });
   }, [currentMatch]);
 
   const removeSelectedQuestion = useCallback((labelId: string) => {
     setSelectedQuestions((prev) => prev.filter((item) => item !== labelId));
+    setBoardByLabel((prev) => {
+      const next = { ...prev };
+      delete next[labelId];
+      return next;
+    });
   }, []);
 
   const reorderSelectedQuestions = useCallback((next: string[]) => {
@@ -304,8 +339,8 @@ function App() {
   }, [hasStarted, searchText, searchByText]);
 
   const documentBase = useMemo(() => currentMatch ? getDocumentBaseFromLabel(currentMatch.labelId) : null, [currentMatch?.labelId]);
-  const paperPdfUrl = documentBase ? assetUrl(qualification, 'papers', `${documentBase}.pdf`) : null;
-  const markschemePdfUrl = documentBase ? assetUrl(qualification, 'markschemes', `${documentBase}.pdf`) : null;
+  const paperPdfUrl = documentBase ? assetUrl(qualification, 'papers', `${documentBase}.pdf`, currentMatch?.board) : null;
+  const markschemePdfUrl = documentBase ? assetUrl(qualification, 'markschemes', `${documentBase}.pdf`, currentMatch?.board) : null;
 
   const isLanding = !hasStarted && !isProcessing && (!currentMatch || currentMatch.labelId === 'error');
 
@@ -320,6 +355,7 @@ function App() {
         undoLastAnnotation={undoLastAnnotation}
         redoLastAnnotation={redoLastAnnotation}
         selectedQuestions={selectedQuestions}
+        boardByLabel={boardByLabel}
         removeSelectedQuestion={removeSelectedQuestion}
         reorderSelectedQuestions={reorderSelectedQuestions}
         onOpenFilters={() => setShowCenterFilter(true)}
@@ -509,6 +545,9 @@ function App() {
                     </button>
                   );
                 })}
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '20px' }}>
+                <BoardSelector board={board} setBoard={setBoard} />
               </div>
               <SearchBar
                 searchText={searchText}
@@ -1190,6 +1229,8 @@ function App() {
         {showCenterFilter && (
           <FilterModal
             qualification={qualification}
+            board={board}
+            setBoard={setBoard}
             levelFilter={levelFilter}
             setLevelFilter={setLevelFilter}
             calculatorFilter={calculatorFilter}
@@ -1207,8 +1248,8 @@ function App() {
           open={tutorOpen}
           onClose={() => setTutorOpen(false)}
           questionId={currentMatch.labelId}
-          questionImageUrl={assetUrl(qualification, 'questions', currentMatch.labelId)}
-          markschemeImageUrl={assetUrl(qualification, 'answers', currentMatch.labelId)}
+          questionImageUrl={assetUrl(qualification, 'questions', currentMatch.labelId, currentMatch.board)}
+          markschemeImageUrl={assetUrl(qualification, 'answers', currentMatch.labelId, currentMatch.board)}
         />
       )}
     </div>

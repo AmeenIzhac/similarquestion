@@ -2,11 +2,12 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { formatLabelId } from '../utils/formatters';
 import { generatePdf } from '../utils/pdf';
 import { assetUrl } from '../utils/assets';
-import type { PdfMode, Qualification } from '../types/index';
+import type { PdfMode, Qualification, ExamBoard } from '../types/index';
 
 interface WorksheetPanelProps {
   qualification: Qualification;
   selectedQuestions: string[];
+  boardByLabel?: Record<string, ExamBoard>;
   removeSelectedQuestion: (labelId: string) => void;
   reorderSelectedQuestions: (next: string[]) => void;
   onHide: () => void;
@@ -15,6 +16,7 @@ interface WorksheetPanelProps {
 export function WorksheetPanel({
   qualification,
   selectedQuestions,
+  boardByLabel,
   removeSelectedQuestion,
   reorderSelectedQuestions,
   onHide
@@ -43,14 +45,16 @@ export function WorksheetPanel({
     isSavingRef.current = true;
     setIsSavingPdf(true);
     try {
-      await generatePdf(questionsForPdf, mode, 'selected', qualification);
+      await generatePdf(questionsForPdf, mode, 'selected', qualification, boardByLabel);
     } catch (error) {
       console.error('Error generating PDF:', error);
+      const message = error instanceof Error ? error.message : String(error);
+      alert(`Couldn't generate the PDF: ${message}`);
     } finally {
       isSavingRef.current = false;
       setIsSavingPdf(false);
     }
-  }, [selectedQuestions, qualification]);
+  }, [selectedQuestions, qualification, boardByLabel]);
 
   useEffect(() => {
     if (!isDropdownOpen) return;
@@ -245,7 +249,7 @@ export function WorksheetPanel({
                     }}
                   >
                     <img
-                      src={assetUrl(qualification, 'questions', labelId)}
+                      src={assetUrl(qualification, 'questions', labelId, boardByLabel?.[labelId])}
                       alt={labelId}
                       draggable={false}
                       style={{
@@ -446,7 +450,7 @@ export function WorksheetPanel({
                         </div>
                         <div style={{ background: '#fff', padding: '14px' }}>
                           <img
-                            src={assetUrl(qualification, 'questions', labelId)}
+                            src={assetUrl(qualification, 'questions', labelId, boardByLabel?.[labelId])}
                             alt={labelId}
                             style={{
                               display: 'block',

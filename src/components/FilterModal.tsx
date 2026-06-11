@@ -1,7 +1,9 @@
-import type { LevelFilter, CalculatorFilter, Qualification } from '../types/index';
+import type { LevelFilter, CalculatorFilter, Qualification, Board } from '../types/index';
 
 interface FilterModalProps {
   qualification: Qualification;
+  board: Board;
+  setBoard: (b: Board) => void;
   levelFilter: LevelFilter;
   setLevelFilter: (filter: LevelFilter) => void;
   calculatorFilter: CalculatorFilter;
@@ -14,6 +16,8 @@ interface FilterModalProps {
 
 export function FilterModal({
   qualification,
+  board,
+  setBoard,
   levelFilter,
   setLevelFilter,
   calculatorFilter,
@@ -95,6 +99,16 @@ export function FilterModal({
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            <label style={{ fontSize: '13px', color: 'var(--color-text-secondary)', fontWeight: 500 }}>Exam board</label>
+            <select data-testid="filter-board-select" value={board} onChange={(e) => setBoard(e.target.value as Board)} style={selectStyle}>
+              <option value="all">All boards</option>
+              <option value="aqa">AQA</option>
+              <option value="edexcel">Edexcel</option>
+              <option value="ocr">OCR</option>
+            </select>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             <label style={{ fontSize: '13px', color: 'var(--color-text-secondary)', fontWeight: 500 }}>Level</label>
             <select data-testid="filter-level-select" value={levelFilter} onChange={(e) => setLevelFilter(e.target.value as LevelFilter)} style={selectStyle}>
               <option value="all">All levels</option>
@@ -162,7 +176,7 @@ export function FilterModal({
             <button
               data-testid="filter-clear-all-btn"
               type="button"
-              onClick={() => { setLevelFilter('all'); setCalculatorFilter('all'); }}
+              onClick={() => { setBoard('all'); setLevelFilter('all'); setCalculatorFilter('all'); }}
               style={{
                 flex: 1,
                 height: '44px',

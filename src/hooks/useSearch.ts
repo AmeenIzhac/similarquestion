@@ -1,13 +1,14 @@
 import { useState, useCallback, useEffect } from 'react';
 import { Mistral } from '@mistralai/mistralai';
 import { searchPinecone, convertFileToBase64 } from '../utils/api';
-import type { Match, LevelFilter, CalculatorFilter, Qualification } from '../types/index';
+import type { Match, LevelFilter, CalculatorFilter, Qualification, Board } from '../types/index';
 
 interface UseSearchProps {
   levelFilter: LevelFilter;
   calculatorFilter: CalculatorFilter;
   numMatches: number;
   qualification: Qualification;
+  board: Board;
 }
 
 const ERROR_MATCH: Match = {
@@ -16,7 +17,7 @@ const ERROR_MATCH: Match = {
   similarity: 0
 };
 
-export function useSearch({ levelFilter, calculatorFilter, numMatches, qualification }: UseSearchProps) {
+export function useSearch({ levelFilter, calculatorFilter, numMatches, qualification, board }: UseSearchProps) {
   const [client, setClient] = useState<Mistral | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [topMatches, setTopMatches] = useState<Match[]>([]);
@@ -54,13 +55,14 @@ export function useSearch({ levelFilter, calculatorFilter, numMatches, qualifica
     
     setIsProcessing(true);
     try {
-      const pineconeResults = await searchPinecone(text, numMatches, levelFilter, calculatorFilter, qualification);
+      const pineconeResults = await searchPinecone(text, numMatches, levelFilter, calculatorFilter, qualification, board);
 
       if (pineconeResults && pineconeResults.result && pineconeResults.result.hits) {
-        const matches: Match[] = pineconeResults.result.hits.map((hit: { _id: string; fields?: { chunk_text?: string }; _score: number }) => ({
+        const matches: Match[] = pineconeResults.result.hits.map((hit: { _id: string; fields?: { text?: string; exam_board?: string }; _score: number }) => ({
           labelId: hit._id,
-          text: hit.fields?.chunk_text || 'No text found',
-          similarity: hit._score
+          text: hit.fields?.text || 'No text found',
+          similarity: hit._score,
+          board: (hit.fields?.exam_board as Match['board']) || 'edexcel'
         }));
         setTopMatches(matches);
         setCurrentMatchIndex(0);
@@ -75,7 +77,7 @@ export function useSearch({ levelFilter, calculatorFilter, numMatches, qualifica
     } finally {
       setIsProcessing(false);
     }
-  }, [levelFilter, calculatorFilter, numMatches, qualification]);
+  }, [levelFilter, calculatorFilter, numMatches, qualification, board]);
 
   const processImageWithOCR = useCallback(async (file: File) => {
     if (!client) {
@@ -98,13 +100,14 @@ export function useSearch({ levelFilter, calculatorFilter, numMatches, qualifica
       
       const extractedText = ocrResponse.pages?.[0]?.markdown || 'No text found';
       
-      const pineconeResults = await searchPinecone(extractedText, numMatches, levelFilter, calculatorFilter, qualification);
+      const pineconeResults = await searchPinecone(extractedText, numMatches, levelFilter, calculatorFilter, qualification, board);
 
       if (pineconeResults && pineconeResults.result && pineconeResults.result.hits) {
-        const matches: Match[] = pineconeResults.result.hits.map((hit: { _id: string; fields?: { chunk_text?: string }; _score: number }) => ({
+        const matches: Match[] = pineconeResults.result.hits.map((hit: { _id: string; fields?: { text?: string; exam_board?: string }; _score: number }) => ({
           labelId: hit._id,
-          text: hit.fields?.chunk_text || 'No text found',
-          similarity: hit._score
+          text: hit.fields?.text || 'No text found',
+          similarity: hit._score,
+          board: (hit.fields?.exam_board as Match['board']) || 'edexcel'
         }));
         setTopMatches(matches);
         setCurrentMatchIndex(0);
@@ -119,7 +122,7 @@ export function useSearch({ levelFilter, calculatorFilter, numMatches, qualifica
     } finally {
       setIsProcessing(false);
     }
-  }, [client, levelFilter, calculatorFilter, numMatches, qualification]);
+  }, [client, levelFilter, calculatorFilter, numMatches, qualification, board]);
 
   return {
     isProcessing,

@@ -2,6 +2,7 @@ export interface Match {
   labelId: string;
   text: string;
   similarity: number;
+  board?: ExamBoard;
 }
 
 export interface DrawingData {
@@ -25,6 +26,8 @@ export interface FormStatus {
 }
 
 export type Qualification = 'gcse' | 'alevel';
+export type ExamBoard = 'aqa' | 'edexcel' | 'ocr';
+export type Board = 'all' | ExamBoard;
 export type LevelFilter = 'all' | 'h' | 'f' | 'a' | 'as';
 export type CalculatorFilter = 'all' | 'calculator' | 'non-calculator';
 

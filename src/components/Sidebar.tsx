@@ -3,7 +3,7 @@ import { AnnotationTools } from './AnnotationTools';
 import { WorksheetPanel } from './WorksheetPanel';
 import { FeedbackForm } from './FeedbackForm';
 import { X, SlidersHorizontal, FileText, MessageSquare, Download, Plus, Minus, Eye } from 'lucide-react';
-import type { AnnotationMode, Match, ViewMode, Qualification } from '../types/index';
+import type { AnnotationMode, Match, ViewMode, Qualification, ExamBoard } from '../types/index';
 
 interface SidebarProps {
   qualification: Qualification;
@@ -14,6 +14,7 @@ interface SidebarProps {
   undoLastAnnotation: () => void;
   redoLastAnnotation: () => void;
   selectedQuestions: string[];
+  boardByLabel?: Record<string, ExamBoard>;
   removeSelectedQuestion: (labelId: string) => void;
   reorderSelectedQuestions: (next: string[]) => void;
   onOpenFilters: () => void;
@@ -37,6 +38,7 @@ export function Sidebar({
   undoLastAnnotation,
   redoLastAnnotation,
   selectedQuestions,
+  boardByLabel,
   removeSelectedQuestion,
   reorderSelectedQuestions,
   onOpenFilters,
@@ -245,6 +247,7 @@ export function Sidebar({
           <WorksheetPanel
             qualification={qualification}
             selectedQuestions={selectedQuestions}
+            boardByLabel={boardByLabel}
             removeSelectedQuestion={removeSelectedQuestion}
             reorderSelectedQuestions={reorderSelectedQuestions}
             onHide={() => setShowWorksheet(false)}

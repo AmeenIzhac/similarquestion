@@ -235,8 +235,8 @@ export function QuestionViewer({
   }, [questionContainerRef, markschemeContainerRef, showMarkscheme, isMobile, isChatOpen, annotationMode, qMinScale, mMinScale]);
 
   const documentBase = useMemo(() => getDocumentBaseFromLabel(currentMatch?.labelId), [currentMatch?.labelId]);
-  const paperPdfUrl = documentBase ? assetUrl(qualification, 'papers', `${documentBase}.pdf`) : null;
-  const markschemePdfUrl = documentBase ? assetUrl(qualification, 'markschemes', `${documentBase}.pdf`) : null;
+  const paperPdfUrl = documentBase ? assetUrl(qualification, 'papers', `${documentBase}.pdf`, currentMatch?.board) : null;
+  const markschemePdfUrl = documentBase ? assetUrl(qualification, 'markschemes', `${documentBase}.pdf`, currentMatch?.board) : null;
 
   const toolbarBtn = (variant: 'default' | 'primary' | 'danger' = 'default'): React.CSSProperties => ({
     padding: isMobile ? '7px 10px' : '6px 12px',
@@ -648,7 +648,7 @@ export function QuestionViewer({
                 <TransformComponent wrapperStyle={{ width: '100%', minHeight: '100%' }} contentStyle={{ width: '100%' }}>
                   <div style={{ position: 'relative', width: '100%', backgroundColor: 'var(--color-surface)' }}>
                     <img
-                      src={assetUrl(qualification, 'questions', currentMatch.labelId)}
+                      src={assetUrl(qualification, 'questions', currentMatch.labelId, currentMatch.board)}
                       alt={currentMatch.labelId}
                       onLoad={handleImageLoad}
                       style={{
@@ -749,7 +749,7 @@ export function QuestionViewer({
                   <TransformComponent wrapperStyle={{ width: '100%', minHeight: '100%' }} contentStyle={{ width: '100%' }}>
                     <div style={{ position: 'relative', width: '100%', backgroundColor: 'var(--color-surface)' }}>
                       <img
-                        src={assetUrl(qualification, 'answers', currentMatch.labelId)}
+                        src={assetUrl(qualification, 'answers', currentMatch.labelId, currentMatch.board)}
                         alt={`Markscheme for ${currentMatch.labelId}`}
                         onLoad={handleImageLoad}
                         style={{
@@ -829,8 +829,8 @@ export function QuestionViewer({
           <ChatBot
             questionId={currentMatch.labelId}
             questionText={currentMatch.text}
-            questionImageUrl={assetUrl(qualification, 'questions', currentMatch.labelId)}
-            markschemeImageUrl={assetUrl(qualification, 'answers', currentMatch.labelId)}
+            questionImageUrl={assetUrl(qualification, 'questions', currentMatch.labelId, currentMatch.board)}
+            markschemeImageUrl={assetUrl(qualification, 'answers', currentMatch.labelId, currentMatch.board)}
             isOpen={true}
             onClose={onToggleChat}
             isInline={true}
@@ -842,8 +842,8 @@ export function QuestionViewer({
         <ChatBot
           questionId={currentMatch.labelId}
           questionText={currentMatch.text}
-          questionImageUrl={assetUrl(qualification, 'questions', currentMatch.labelId)}
-          markschemeImageUrl={assetUrl(qualification, 'answers', currentMatch.labelId)}
+          questionImageUrl={assetUrl(qualification, 'questions', currentMatch.labelId, currentMatch.board)}
+          markschemeImageUrl={assetUrl(qualification, 'answers', currentMatch.labelId, currentMatch.board)}
           isOpen={isChatOpen}
           onClose={onToggleChat}
           isInline={false}
