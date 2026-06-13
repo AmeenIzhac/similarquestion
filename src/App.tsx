@@ -13,16 +13,24 @@ import { createMarkSession } from './utils/markSession';
 const QUALIFICATION_STORAGE_KEY = 'qualification';
 const BOARD_STORAGE_KEY = 'board';
 
+// Each qualification has its own board list, so a stored board is only valid
+// alongside the qualification it was chosen under.
+const BOARDS_BY_QUALIFICATION: Record<Qualification, Board[]> = {
+  gcse: ['aqa', 'edexcel', 'ocr'],
+  alevel: ['aqa', 'edexcel', 'ocr'],
+  igcse: ['cam', 'edexcela', 'edexcelb'],
+};
+
 function readStoredQualification(): Qualification {
   if (typeof window === 'undefined') return 'gcse';
   const v = window.localStorage.getItem(QUALIFICATION_STORAGE_KEY);
-  return v === 'alevel' ? 'alevel' : 'gcse';
+  return v === 'alevel' || v === 'igcse' ? v : 'gcse';
 }
 
 function readStoredBoard(): Board {
   if (typeof window === 'undefined') return 'all';
-  const v = window.localStorage.getItem(BOARD_STORAGE_KEY);
-  return v === 'aqa' || v === 'edexcel' || v === 'ocr' ? v : 'all';
+  const v = window.localStorage.getItem(BOARD_STORAGE_KEY) as Board | null;
+  return v && BOARDS_BY_QUALIFICATION[readStoredQualification()].includes(v) ? v : 'all';
 }
 
 function App() {
@@ -107,6 +115,9 @@ function App() {
     setCalculatorFilter('all');
     setSelectedQuestions([]);
     setBoardByLabel({});
+    // The previous qualification's board may not exist here (e.g. AQA under
+    // IGCSE) — fall back to all boards rather than silently filtering to none.
+    setBoard((b) => (b !== 'all' && !BOARDS_BY_QUALIFICATION[qualification].includes(b) ? 'all' : b));
     if (hasStarted && searchText.trim()) {
       searchByText(searchText);
     }
@@ -123,6 +134,17 @@ function App() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [board]);
+
+  // The GCSE tab hosts both GCSE and IGCSE boards in one selector. IGCSE board
+  // data lives in the IGCSE Pinecone index / R2 prefix, so picking an IGCSE
+  // board switches the underlying qualification (and a UK board switches back).
+  // A-level boards never map to IGCSE.
+  const handleBoardChange = useCallback((next: Board) => {
+    if (qualification !== 'alevel') {
+      setQualification(BOARDS_BY_QUALIFICATION.igcse.includes(next) ? 'igcse' : 'gcse');
+    }
+    setBoard(next);
+  }, [qualification]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -171,7 +193,7 @@ function App() {
         questionImageUrl: assetUrl(qualification, 'questions', currentMatch.labelId, currentMatch.board),
         markschemeImageUrl: assetUrl(qualification, 'answers', currentMatch.labelId, currentMatch.board),
         workImages,
-        qualification: qualification === 'alevel' ? 'A-Level' : 'GCSE',
+        qualification: qualification === 'alevel' ? 'A-Level' : qualification === 'igcse' ? 'IGCSE' : 'GCSE',
       });
       setMarkResult(result);
     } catch (e: any) {
@@ -521,7 +543,10 @@ function App() {
                   { value: 'gcse', label: 'GCSE' },
                   { value: 'alevel', label: 'A-level' },
                 ] as const).map((tab) => {
-                  const active = qualification === tab.value;
+                  // The GCSE tab also covers IGCSE (its boards share the row).
+                  const active = tab.value === 'gcse'
+                    ? qualification !== 'alevel'
+                    : qualification === tab.value;
                   return (
                     <button
                       key={tab.value}
@@ -547,7 +572,7 @@ function App() {
                 })}
               </div>
               <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '20px' }}>
-                <BoardSelector board={board} setBoard={setBoard} />
+                <BoardSelector board={board} setBoard={handleBoardChange} qualification={qualification} />
               </div>
               <SearchBar
                 searchText={searchText}

@@ -1,11 +1,12 @@
-import type { Qualification } from '../types/index';
+import type { Qualification, ExamBoard } from '../types/index';
 
 const QUALIFICATION_LABEL: Record<Qualification, string> = {
   gcse: 'GCSE',
+  igcse: 'IGCSE',
   alevel: 'A-Level',
 };
 
-export const formatLabelId = (labelId: string | undefined, qualification?: Qualification): string => {
+export const formatLabelId = (labelId: string | undefined, qualification?: Qualification, board?: ExamBoard): string => {
   if (!labelId) return '';
   const cleaned = labelId.replace(/\.png$/i, '');
   const parts = cleaned.split('-');
@@ -25,13 +26,15 @@ export const formatLabelId = (labelId: string | undefined, qualification?: Quali
     })
     .join(' ');
   const levelLower = levelRaw.toLowerCase();
+  // Cambridge IGCSE tiers are named Core/Extended but share the f/h letters.
   const level =
-    levelLower === 'h' ? 'Higher'
-    : levelLower === 'f' ? 'Foundation'
+    levelLower === 'h' ? (board === 'cam' ? 'Extended' : 'Higher')
+    : levelLower === 'f' ? (board === 'cam' ? 'Core' : 'Foundation')
     : levelLower === 'a' || levelLower === 'al' ? 'A-Level'
     : levelLower === 'as' ? 'AS-Level'
     : levelRaw;
-  const paperNumber = paperRaw.replace(/[^0-9]/g, '') || paperRaw;
+  // Keep variant letters (Edexcel IGCSE regional papers: 1r -> "Paper 1R").
+  const paperNumber = paperRaw.replace(/[^0-9a-z]/gi, '').toUpperCase() || paperRaw;
   const paper = `Paper ${paperNumber}`;
   const questionMatch = questionRaw.match(/q(\d+)/i);
   const question = questionMatch ? `Question ${questionMatch[1]}` : questionRaw;

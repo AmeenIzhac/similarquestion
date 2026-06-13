@@ -362,7 +362,7 @@ export function QuestionViewer({
               flex: 1,
             }}
           >
-            {formatLabelId(currentMatch.labelId, qualification).replace(/\s•\s/g, ' · ')}
+            {formatLabelId(currentMatch.labelId, qualification, currentMatch.board).replace(/\s•\s/g, ' · ')}
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
@@ -512,7 +512,7 @@ export function QuestionViewer({
               fontFamily: 'var(--font-heading)',
               letterSpacing: '-0.01em',
             }}>
-            {formatLabelId(currentMatch.labelId, qualification)}
+            {formatLabelId(currentMatch.labelId, qualification, currentMatch.board)}
           </span>
 
           <span data-testid="match-counter" style={{

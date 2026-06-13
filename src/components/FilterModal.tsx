@@ -102,9 +102,19 @@ export function FilterModal({
             <label style={{ fontSize: '13px', color: 'var(--color-text-secondary)', fontWeight: 500 }}>Exam board</label>
             <select data-testid="filter-board-select" value={board} onChange={(e) => setBoard(e.target.value as Board)} style={selectStyle}>
               <option value="all">All boards</option>
-              <option value="aqa">AQA</option>
-              <option value="edexcel">Edexcel</option>
-              <option value="ocr">OCR</option>
+              {qualification === 'igcse' ? (
+                <>
+                  <option value="cam">Cambridge</option>
+                  <option value="edexcela">Edexcel A</option>
+                  <option value="edexcelb">Edexcel B</option>
+                </>
+              ) : (
+                <>
+                  <option value="aqa">AQA</option>
+                  <option value="edexcel">Edexcel</option>
+                  <option value="ocr">OCR</option>
+                </>
+              )}
             </select>
           </div>
 
@@ -116,6 +126,13 @@ export function FilterModal({
                 <>
                   <option value="h">Higher (H)</option>
                   <option value="f">Foundation (F)</option>
+                </>
+              ) : qualification === 'igcse' ? (
+                <>
+                  {/* Cambridge papers are Core/Extended; Edexcel A is
+                      Foundation/Higher — both map onto the same f/h letters. */}
+                  <option value="h">Higher / Extended (H)</option>
+                  <option value="f">Foundation / Core (F)</option>
                 </>
               ) : (
                 <>

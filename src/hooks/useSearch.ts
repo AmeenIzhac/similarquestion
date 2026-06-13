@@ -58,8 +58,10 @@ export function useSearch({ levelFilter, calculatorFilter, numMatches, qualifica
       const pineconeResults = await searchPinecone(text, numMatches, levelFilter, calculatorFilter, qualification, board);
 
       if (pineconeResults && pineconeResults.result && pineconeResults.result.hits) {
-        const matches: Match[] = pineconeResults.result.hits.map((hit: { _id: string; fields?: { text?: string; exam_board?: string }; _score: number }) => ({
-          labelId: hit._id,
+        const matches: Match[] = pineconeResults.result.hits.map((hit: { _id: string; fields?: { text?: string; exam_board?: string; file?: string }; _score: number }) => ({
+          // IGCSE records use a board-prefixed _id (the boards share paper
+          // filenames); `file` carries the plain R2 filename the asset URLs need.
+          labelId: hit.fields?.file || hit._id,
           text: hit.fields?.text || 'No text found',
           similarity: hit._score,
           board: (hit.fields?.exam_board as Match['board']) || 'edexcel'
@@ -103,8 +105,10 @@ export function useSearch({ levelFilter, calculatorFilter, numMatches, qualifica
       const pineconeResults = await searchPinecone(extractedText, numMatches, levelFilter, calculatorFilter, qualification, board);
 
       if (pineconeResults && pineconeResults.result && pineconeResults.result.hits) {
-        const matches: Match[] = pineconeResults.result.hits.map((hit: { _id: string; fields?: { text?: string; exam_board?: string }; _score: number }) => ({
-          labelId: hit._id,
+        const matches: Match[] = pineconeResults.result.hits.map((hit: { _id: string; fields?: { text?: string; exam_board?: string; file?: string }; _score: number }) => ({
+          // IGCSE records use a board-prefixed _id (the boards share paper
+          // filenames); `file` carries the plain R2 filename the asset URLs need.
+          labelId: hit.fields?.file || hit._id,
           text: hit.fields?.text || 'No text found',
           similarity: hit._score,
           board: (hit.fields?.exam_board as Match['board']) || 'edexcel'

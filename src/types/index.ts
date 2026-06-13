@@ -25,8 +25,11 @@ export interface FormStatus {
   message: string;
 }
 
-export type Qualification = 'gcse' | 'alevel';
-export type ExamBoard = 'aqa' | 'edexcel' | 'ocr';
+export type Qualification = 'gcse' | 'igcse' | 'alevel';
+// 'cam' | 'edexcela' | 'edexcelb' are the IGCSE boards (Cambridge 0580/0980,
+// Edexcel A 4MA1, Edexcel B 4MB1); the R2 prefixes and Pinecone exam_board
+// metadata use the same strings.
+export type ExamBoard = 'aqa' | 'edexcel' | 'ocr' | 'cam' | 'edexcela' | 'edexcelb';
 export type Board = 'all' | ExamBoard;
 export type LevelFilter = 'all' | 'h' | 'f' | 'a' | 'as';
 export type CalculatorFilter = 'all' | 'calculator' | 'non-calculator';

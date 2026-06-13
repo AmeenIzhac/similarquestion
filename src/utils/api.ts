@@ -12,10 +12,14 @@ export const searchPinecone = async (
     const pineconeApiKey = import.meta.env.VITE_PINECONE_API_KEY;
     const indexHost = qualification === 'alevel'
       ? import.meta.env.VITE_PINECONE_INDEX_HOST_ALEVEL
-      : import.meta.env.VITE_PINECONE_INDEX_HOST;
+      : qualification === 'igcse'
+        ? import.meta.env.VITE_PINECONE_INDEX_HOST_IGCSE
+        : import.meta.env.VITE_PINECONE_INDEX_HOST;
     const namespace = qualification === 'alevel'
       ? (import.meta.env.VITE_PINECONE_NAMESPACE_ALEVEL || '__default__')
-      : (import.meta.env.VITE_PINECONE_NAMESPACE || 'example-namespace');
+      : qualification === 'igcse'
+        ? (import.meta.env.VITE_PINECONE_NAMESPACE_IGCSE || '__default__')
+        : (import.meta.env.VITE_PINECONE_NAMESPACE || 'example-namespace');
     
     if (!pineconeApiKey) {
       console.error('Pinecone API key not configured');
@@ -72,7 +76,7 @@ export const searchPinecone = async (
           top_k: topK,
           filter: finalFilter
         },
-        fields: ["text", "exam_board"]
+        fields: ["text", "exam_board", "file"]
       })
     });
 
